@@ -34,7 +34,7 @@ B = L_tube/(N_b + 1)
 A_sh = (D_sh/Y)*(Y - d_o)*B
 
 V_sh = 2 #for now
-Re_sh = 
+
 # Heat transfer coeff
 
 # Q
