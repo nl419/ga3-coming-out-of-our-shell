@@ -1,4 +1,6 @@
 import numpy as np
+from scipy.interpolate import pade
+import matplotlib.pyplot as plt
 
 # 4 datapoints: 3000, 5000, 10000, inf
 K_e_turbulent_datapoints_px = [
@@ -25,7 +27,7 @@ def px_to_decimal(px):
 # option 2: construct many 1D polynomials, one for each Re, and construct a 1D polynomial in terms of the coefficients.
 # I will do option 2.
 
-K_e_turbulent_datapoints_decimal = np.zeros_like(K_e_turbulent_datapoints_px)
+K_e_turbulent_datapoints_decimal = np.zeros((4,4))
 
 for i,y_list in enumerate(K_e_turbulent_datapoints_px):
     for j,y_px in enumerate(y_list):
@@ -44,3 +46,14 @@ for i,x in enumerate(xs):
         vandermonde[i,j] = x ** j
 
 print(vandermonde)
+
+
+def approximant(sigma, Re, q):
+    # https://stackoverflow.com/questions/29815094/rational-function-curve-fitting-in-python
+    # Approximate function as (p2 + p1 x + p0 x^2) / (1 + p3 x)
+    # Approximate coefficients as pi = (qi1 + qi0 x) / (1 + qi3 x + qi2 x^2)
+    # Note: not `(p2 + p1 x + p0 x^2) / (p4 + p3 x)`, because `p4` is redundant.
+    p = np.zeros(4)
+    for i,qi in enumerate(q):
+        p[i] = np.polyval(qi[:2], Re) / (1 + np.polyval(qi[2:], Re) * Re)
+    return np.polyval(p[:3], sigma) / (1 + np.polyval(p[3:], sigma) * sigma)
