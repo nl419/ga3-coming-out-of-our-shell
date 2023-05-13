@@ -1,31 +1,24 @@
 import numpy as np
-from scipy.optimize import curve_fit
 import matplotlib.pyplot as plt
 
-def approximant(sigma, Re, q):
-    # https://stackoverflow.com/questions/29815094/rational-function-curve-fitting-in-python
-    # Approximate function as `output = p0 sigma^2 + p1 sigma + p2`
-    # Approximate coefficients as `pi = qi0 Re^-2 + qi1 Re^-1 + qi2`
-    if type(Re) is np.ndarray:
-        assert type(sigma) is np.ndarray
-        assert np.shape(Re) == np.shape(sigma)
-        Re_inv = np.reciprocal(Re)
-        point_count = np.shape(sigma)[0]
-        p = np.zeros((point_count, 3))
-        for i,qi in enumerate(q):
-            p[:,i] = np.polyval(qi, Re_inv)
-        out = np.zeros(point_count)
-        for i,s in enumerate(sigma):
-            out[i] = np.polyval(p[i,:], s)
-    else:
-        Re_inv = 1 / Re
-        p = np.zeros(3)
-        for i,qi in enumerate(q):
-            p[i] = np.polyval(qi, Re_inv)
-        out = np.polyval(p, sigma)
-    return out
 
-def calibrate():
+_n_sigma_coeffs = 4
+_n_re_coeffs = 3
+_sigma_re_coeffs_Ke = np.zeros((_n_sigma_coeffs, _n_re_coeffs))
+_sigma_re_coeffs_Kc = np.zeros((_n_sigma_coeffs, _n_re_coeffs))
+
+def _K_poly(sigma, Re, sigma_re_coeffs):
+    assert type(Re) is not np.ndarray
+    assert np.shape(sigma_re_coeffs) == (_n_sigma_coeffs, _n_re_coeffs)
+    coeffs = np.zeros(_n_sigma_coeffs)
+    for i,pp_coeffs_i in enumerate(sigma_re_coeffs):
+        coeffs[i] = np.polynomial.Polynomial(pp_coeffs_i)(1 / Re)
+    return np.polynomial.Polynomial(coeffs)(sigma)
+
+def Kc_plus_Ke(sigma, Re):
+    return _K_poly(sigma, Re, _sigma_re_coeffs_Kc) + _K_poly(sigma, Re, _sigma_re_coeffs_Ke)
+
+def _calculate_poly_coeffs(do_plots=False):
     # https://apps.automeris.io/wpd/
     # K_e_turb_re_inf,,K_e_turb_re_10000,,K_e_turb_re_5000,,K_e_turb_re_3000,
     # X,Y,X,Y,X,Y,X,Y
@@ -59,85 +52,70 @@ def calibrate():
         1.0006459948320414,0.5309534368070953,1.001291989664083,0.5886031042128609,1.0012919896640833,0.5966740576496677,1.000645994832042,0.6082039911308207
     ]
 
-    def approximant_curve_fit(sigma_re, q00, q01, q02, q10, q11, q12, q20, q21, q22):
-        q = np.array([q00, q01, q02, q10, q11, q12, q20, q21, q22]).reshape((3,3))
-        return approximant(sigma_re[:,0], sigma_re[:,1], q)
-
     # Note: need n_datapoints = same for both K_e and K_c
     # Same goes for n_re
     n_datapoints = 11
     n_re = 4
-    n_total = n_datapoints * n_re
 
-    K_e_turb_x = np.zeros((n_total,2))
-    K_c_turb_x = np.zeros((n_total,2))
-    K_e_turb_y = np.zeros(n_total)
-    K_c_turb_y = np.zeros(n_total)
+    K_e_turb_x = np.zeros((n_datapoints, n_re))
+    K_c_turb_x = np.zeros((n_datapoints, n_re))
+    K_e_turb_y = np.zeros((n_datapoints, n_re))
+    K_c_turb_y = np.zeros((n_datapoints, n_re))
 
-    Re_list = [1e10, 10000, 5000, 3000]
-    for i in range(n_total):
-        # Init sigmas
-        K_e_turb_x[i,0] = K_e_turb_dataset[i * 2]
-        K_c_turb_x[i,0] = K_c_turb_dataset[i * 2]
-        # Init Reynolds numbers
-        Re = Re_list[i % n_re]
-        K_e_turb_x[i,1] = Re
-        K_c_turb_x[i,1] = Re
-        # Init Ks
-        K_e_turb_y[i] = K_e_turb_dataset[i * 2 + 1]
-        K_c_turb_y[i] = K_c_turb_dataset[i * 2 + 1]
-
-    popt, pcov = curve_fit(approximant_curve_fit, K_e_turb_x, K_e_turb_y, maxfev = 20000)
-    K_e_q = np.reshape(popt, (3,3))
-    print(f"{K_e_q=}")
-
-    K_e_x_coords = np.reshape(K_e_turb_x, (n_datapoints,n_re,2))[:,:,0]
-    K_e_y_coords = np.reshape(K_e_turb_y, (n_datapoints,n_re))
-    plt.plot(K_e_x_coords, K_e_y_coords, 'o')
-    K_e_x_coords = np.linspace(0,1,100)
-    K_e_y_coords = np.zeros((100,n_re))
-    for i in range(n_re):
-        K_e_y_coords[:,i] = approximant(K_e_x_coords, Re_list[i], K_e_q)
-    plt.plot(K_e_x_coords, K_e_y_coords)
-    plt.show()
-
-    popt, pcov = curve_fit(approximant_curve_fit, K_c_turb_x, K_c_turb_y, 
-                            p0=[ 2.07516878e+01, -1.56531599e+04, -6.70582809e+03,
-                                -1.18603970e+03, -1.41667880e+04,  4.96209464e+03,
-                                -3.48054467e+03, -9.38374244e+05, -4.40872114e+03],
-                            maxfev = 20000)
-    K_c_q = np.reshape(popt, (3,3))
-    print(f"{K_c_q=}")
-
-    K_c_x_coords = np.reshape(K_c_turb_x, (n_datapoints,n_re,2))[:,:,0]
-    K_c_y_coords = np.reshape(K_c_turb_y, (n_datapoints,n_re))
-    plt.plot(K_c_x_coords, K_c_y_coords, 'o')
-    K_c_x_coords = np.linspace(0,1,1000)
-    K_c_y_coords = np.zeros((1000,n_re))
-    for i in range(n_re):
-        K_c_y_coords[:,i] = approximant(K_c_x_coords, Re_list[i], K_c_q)
-    plt.plot(K_c_x_coords, K_c_y_coords)
-    plt.show()
-    approximant(0, 5000, K_c_q)
+    Re_list = np.array([1e30, 10000, 5000, 3000])
+    Re_inv_list = np.reciprocal(Re_list)
+    for i in range(n_datapoints):
+        for j in range(n_re):
+            # Init sigmas
+            K_e_turb_x[i,j] = K_e_turb_dataset[(i * n_re + j) * 2]
+            K_c_turb_x[i,j] = K_c_turb_dataset[(i * n_re + j) * 2]
+            # Init Ks
+            K_e_turb_y[i,j] = K_e_turb_dataset[(i * n_re + j) * 2 + 1]
+            K_c_turb_y[i,j] = K_c_turb_dataset[(i * n_re + j) * 2 + 1]
     
+    for K_turb_x, K_turb_y, sigma_re_coeffs in zip((K_e_turb_x, K_c_turb_x), (K_e_turb_y, K_c_turb_y), (_sigma_re_coeffs_Ke, _sigma_re_coeffs_Kc)):
+        # Find polynomial coefficients for each Re_inv
+        polys = np.zeros((n_re, _n_sigma_coeffs))
+        for i,Re_inv in enumerate(Re_inv_list):
+            poly = np.polynomial.Polynomial.fit(K_turb_x[:,i], K_turb_y[:,i], _n_sigma_coeffs - 1)
+            polys[i,:] = poly.convert().coef
+            
+            if do_plots:
+                xs = np.linspace(0,1,100)
+                ys = poly(xs)
+                
+                plt.plot(K_turb_x[:,i], K_turb_y[:,i], "o")
+                plt.plot(xs,ys)
+        if do_plots:
+            plt.show()
 
-def simple_usage():
-    K_e_q = np.array([
-        [-1.71982162e-05,  5.87701941e-01, -2.88255203e-05],
-        [-1.98488340e-05, -1.25706593e+00,  1.63329320e-05],
-        [ 5.66846358e+01, -1.00446719e+02,  5.03904167e+01],
-        [-1.18427104e-02,  3.67100540e+01,  2.47203028e-01]
-    ])
+        # Fit a polynomial to each of the polynomial coefficients
+        for i,coeffs in enumerate(polys.T):
+            poly = np.polynomial.Polynomial.fit(Re_inv_list, coeffs, _n_re_coeffs - 1)
+            sigma_re_coeffs[i,:] = poly.convert().coef
 
-    sigma = 0.1
-    re = 4000
+            # if do_plots:
+            #     xs = np.linspace(Re_inv_list.min(), Re_inv_list.max(), 100)
+            #     ys = poly(xs)
 
-    # sigma = np.array([0.1,0.2,0.3])
-    # re = 4000
+            #     plt.plot(Re_inv_list, coeffs, "o")
+            #     plt.plot(xs, ys)
+            #     plt.show()
+        
+        for re_inv in np.linspace(Re_inv_list.min(), Re_inv_list.max(), 10):
+            xs = np.linspace(0,1,100)
+            ys = _K_poly(xs, 1/re_inv, sigma_re_coeffs)
 
-    # sigma = np.array([0.1,0.2,0.3])
-    # re = np.array([4000, 5000, 6000])
+            if do_plots:
+                plt.plot(xs,ys,label=f"Re={1/re_inv}")
+        
+        if do_plots:
+            plt.legend()
+            for i in range(n_re):
+                plt.plot(K_turb_x[:,i], K_turb_y[:,i], "o")
+            plt.show()
 
-    print(approximant(sigma, re, K_e_q))
-
-calibrate()
+if __name__ == "__main__":
+    _calculate_poly_coeffs(True)
+else:
+    _calculate_poly_coeffs()
