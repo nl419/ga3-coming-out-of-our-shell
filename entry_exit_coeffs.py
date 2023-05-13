@@ -4,32 +4,25 @@ import matplotlib.pyplot as plt
 
 def approximant(sigma, Re, q):
     # https://stackoverflow.com/questions/29815094/rational-function-curve-fitting-in-python
-    # Approximate function as `output = (p0 sigma^2 + p1 sigma + p2) / (p3 sigma + 1)`
-    # Approximate coefficients as `pi = (qi0 Re + qi1) / (qi2 Re + 1)`
-    # Note: not `(p0 sigma^2 + p1 sigma + p2) / (p3 sigma + p4)`, because `p4` is redundant.
-    if type(sigma) is np.ndarray:
-        if type(Re) is np.ndarray:
-            assert np.shape(Re) == np.shape(sigma)
-            Re_array = Re
-        else:
-            Re_array = np.ones_like(sigma) * Re
+    # Approximate function as `output = p0 sigma^2 + p1 sigma + p2`
+    # Approximate coefficients as `pi = qi0 Re^-2 + qi1 Re^-1 + qi2`
+    if type(Re) is np.ndarray:
+        assert type(sigma) is np.ndarray
+        assert np.shape(Re) == np.shape(sigma)
+        Re_inv = np.reciprocal(Re)
         point_count = np.shape(sigma)[0]
-        p = np.zeros((point_count, 4))
+        p = np.zeros((point_count, 3))
         for i,qi in enumerate(q):
-            a = np.polyval(qi[:2], Re_array)
-            b = np.polyval(qi[2:], Re_array) * Re_array + 1
-            p[:,i] = a / b
+            p[:,i] = np.polyval(qi, Re_inv)
         out = np.zeros(point_count)
         for i,s in enumerate(sigma):
-            out[i] = np.polyval(p[i,:3], s) / (np.polyval(p[i,3:], s) * s + 1)
+            out[i] = np.polyval(p[i,:], s)
     else:
-        assert type(Re) is not np.ndarray
-        p = np.zeros(4)
+        Re_inv = 1 / Re
+        p = np.zeros(3)
         for i,qi in enumerate(q):
-            a = np.polyval(qi[:2], Re)
-            b = 1 + np.polyval(qi[2:], Re) * Re
-            p[i] = a / b
-        out = np.polyval(p[:3], sigma) / (1 + np.polyval(p[3:], sigma) * sigma)
+            p[i] = np.polyval(qi, Re_inv)
+        out = np.polyval(p, sigma)
     return out
 
 def calibrate():
@@ -66,13 +59,8 @@ def calibrate():
         1.0006459948320414,0.5309534368070953,1.001291989664083,0.5886031042128609,1.0012919896640833,0.5966740576496677,1.000645994832042,0.6082039911308207
     ]
 
-    def approximant_curve_fit(sigma_re, q00, q01, q02, q10, q11, q12, q20, q21, q22, q30, q31, q32):
-        q = np.array([
-            [q00, q01, q02],
-            [q10, q11, q12],
-            [q20, q21, q22],
-            [q30, q31, q32],
-        ])
+    def approximant_curve_fit(sigma_re, q00, q01, q02, q10, q11, q12, q20, q21, q22):
+        q = np.array([q00, q01, q02, q10, q11, q12, q20, q21, q22]).reshape((3,3))
         return approximant(sigma_re[:,0], sigma_re[:,1], q)
 
     # Note: need n_datapoints = same for both K_e and K_c
@@ -100,7 +88,7 @@ def calibrate():
         K_c_turb_y[i] = K_c_turb_dataset[i * 2 + 1]
 
     popt, pcov = curve_fit(approximant_curve_fit, K_e_turb_x, K_e_turb_y, maxfev = 20000)
-    K_e_q = np.reshape(popt, (4,3))
+    K_e_q = np.reshape(popt, (3,3))
     print(f"{K_e_q=}")
 
     K_e_x_coords = np.reshape(K_e_turb_x, (n_datapoints,n_re,2))[:,:,0]
@@ -116,10 +104,9 @@ def calibrate():
     popt, pcov = curve_fit(approximant_curve_fit, K_c_turb_x, K_c_turb_y, 
                             p0=[ 2.07516878e+01, -1.56531599e+04, -6.70582809e+03,
                                 -1.18603970e+03, -1.41667880e+04,  4.96209464e+03,
-                                -3.48054467e+03, -9.38374244e+05, -4.40872114e+03,
-                                 1.00000000e+00,  1.00000000e+00,  1.00000000e+00],
+                                -3.48054467e+03, -9.38374244e+05, -4.40872114e+03],
                             maxfev = 20000)
-    K_c_q = np.reshape(popt, (4,3))
+    K_c_q = np.reshape(popt, (3,3))
     print(f"{K_c_q=}")
 
     K_c_x_coords = np.reshape(K_c_turb_x, (n_datapoints,n_re,2))[:,:,0]
@@ -131,6 +118,7 @@ def calibrate():
         K_c_y_coords[:,i] = approximant(K_c_x_coords, Re_list[i], K_c_q)
     plt.plot(K_c_x_coords, K_c_y_coords)
     plt.show()
+    approximant(0, 5000, K_c_q)
     
 
 def simple_usage():
