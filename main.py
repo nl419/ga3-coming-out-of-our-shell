@@ -39,8 +39,8 @@ N = 13 #for now
 N_b = 9 #for now
 B = L_tube/(N_b + 1)
 A_sh = (d_sh/Y)*(Y - d_o)*B
-
 V_sh = 2 #for now
+m_dot_1 = V_sh*rho*A_sh
 Re_sh = rho*V_sh*L_tube/mu
 
 A_pipe =(np.pi/4)*(d_sh) 
@@ -72,7 +72,26 @@ T2_out = 50
 del_T_lm = ((T2_in - T1_out) - (T2_out - T1_in))/(np.log((T2_in - T1_out)/(T2_out - T1_in)))
 F = 0.7 #correction factor, dependent on number of tube passes, will need to compute exact value
 A = N*np.pi*d_i*L_tube
-Q_dot = H*A*del_T_lm*F
+Q_dot_LMTD = H*A*del_T_lm*F
+
+#now using the effectiveness NTU method 
+#finding C_min
+if m_dot_1 < m_dot_2:
+    
+    C_min = cp*m_dot_1
+    C_max = cp*m_dot_2
+    
+else:
+    
+    C_min = cp*m_dot_2
+    C_max = cp*m_dot_1
+    
+    
+Q_max = C_min*(T2_in - T1_in)
+NTU = H*A/C_min
+R_c = C_min/C_max
+effectiveness = (1 - np.exp((-NTU)*(1 - R_c)))/(1 - R_c*np.exp((-NTU)*(1 - R_c)))
+Q_dot_ENTU = effectiveness*Q_max
 
 
 #linear interpolation for the compressor characteristic
