@@ -1,23 +1,20 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-polys_K_e = np.array([])
-polys_K_c = np.array([])
-polys_F_1 = np.array([])
-polys_F_2 = np.array([])
-
 Re_inv_classes = np.reciprocal(np.array([1e30, 10000, 5000, 3000]))
 R_classes = np.array([0.2, 0.4, 0.6, 0.8, 1.1, 1.5, 2.0, 3.0, 5.0])
 
-def _find_polys(dataset: list, n_classes: int, poly_order: int, do_plots = False):
-    # Function which takes in a list of datapoints (from the digitiser)
-    # Outputs the polynomials for each class
-    # Later, use a lerping function between the polynomials
-    # Use 1/Re to lerp the K_c and K_e
-    # Simply use R to lerp the correction factor
+polys_K_e = np.array([])
+polys_K_c = np.array([])
+F_2_xs = np.zeros((len(R_classes), 20))
+F_2_ys = np.zeros_like(F_2_xs)
+F_1_xs = np.zeros((len(R_classes), 22))
+F_1_ys = np.zeros_like(F_1_xs)
 
-    # First step: polynomial given a list of classes
+# Create the xs and ys for each F, then lerp.
+# Need to create the xs and ys separately for each class
 
+def _split_dataset(dataset: list, n_classes: int):
     assert(len(dataset) % n_classes == 0)
     n_datapoints = int((len(dataset) / 2) / n_classes)
     assert(n_datapoints * n_classes * 2 == len(dataset))
@@ -31,6 +28,18 @@ def _find_polys(dataset: list, n_classes: int, poly_order: int, do_plots = False
             dataset_x[i,j] = dataset[(i * n_classes + j) * 2]
             # Init Ks
             dataset_y[i,j] = dataset[(i * n_classes + j) * 2 + 1]
+    return dataset_x, dataset_y
+
+def _find_polys(dataset: list, n_classes: int, poly_order: int, do_plots = False):
+    # Function which takes in a list of datapoints (from the digitiser)
+    # Outputs the polynomials for each class
+    # Later, use a lerping function between the polynomials
+    # Use 1/Re to lerp the K_c and K_e
+    # Simply use R to lerp the correction factor
+
+    # First step: polynomial given a list of classes
+
+    dataset_x, dataset_y = _split_dataset(dataset, n_classes)
     
     # Find polynomial coefficients for each class
     polys = []
@@ -47,7 +56,7 @@ def _find_polys(dataset: list, n_classes: int, poly_order: int, do_plots = False
         plt.show()
     return np.array(polys)
 
-def _init_all_polys(do_plots):
+def _init_all_interpolants(do_plots):
     # find the polys for all the things
     # F one_pass
     # F two_pass
@@ -137,13 +146,34 @@ def _init_all_polys(do_plots):
 
     polys_K_e = _find_polys(K_e_turb_dataset, len(Re_inv_classes), 4, do_plots)
     polys_K_c = _find_polys(K_c_turb_dataset, len(Re_inv_classes), 4, do_plots)
-    polys_F_1 = _find_polys(one_pass_dataset, len(R_classes), 6, do_plots)
-    polys_F_2 = _find_polys(two_pass_dataset, len(R_classes), 6, do_plots)
+    F_1_xs, F_1_ys = _split_dataset(one_pass_dataset, len(R_classes))
+    F_2_xs, F_2_ys = _split_dataset(two_pass_dataset, len(R_classes))
+
+    if not do_plots:
+        return
+
+    # Do a sweep over many `R_inv`s
+    # Do a sweep over many `R`s
+
+    Re_invs = np.linspace(np.min(Re_inv_classes), np.max(Re_inv_classes), 10)
+    Rs = np.linspace(np.min(R_classes), np.max(R_classes), 10)
+
+    # Plot all the results against the input data
+    # First, the K_e and K_c
+    xs = np.linspace(0, 1, 100)
+    # TODO plot ys
+
+    K_e_xs, K_e_ys = _split_dataset(K_e_turb_dataset, len(Re_inv_classes))
+    K_c_xs, K_c_ys = _split_dataset(K_c_turb_dataset, len(Re_inv_classes))
+    for xs_dataset, ys_dataset in zip(K_e_xs, K_e_ys):
+        plt.plot(xs_dataset,ys_dataset)
+    
 
 def K_c_plus_K_e(sigma, re):
     # Evaluate the relevant polys
     # Add them up
     # Lerp
+    # TODO make this function accept a list of sigmas.
     Re_inv = 1/re
     xs = Re_inv_classes
     ys = np.zeros(np.shape(Re_inv_classes))
@@ -155,7 +185,25 @@ def K_c_plus_K_e(sigma, re):
 
     return np.interp(Re_inv, xs, ys)
 
+def F_1(P, R):
+    xs = R_classes
+    ys = np.zeros(np.shape(R_classes))
+
+    for i,_ in enumerate(ys):
+        ys[i] = np.interp(P, F_1_xs[i,:], F_1_ys[i,:])
+    
+    return np.interp(R, xs, ys)
+
+def F_2(P, R):
+    xs = R_classes
+    ys = np.zeros(np.shape(R_classes))
+
+    for i,_ in enumerate(ys):
+        ys[i] = np.interp(P, F_2_xs[i,:], F_2_ys[i,:])
+    
+    return np.interp(R, xs, ys)
+
 if __name__ == "__main__":
-    _init_all_polys(True)
+    _init_all_interpolants(True)
 else:
-    _init_all_polys(False)
+    _init_all_interpolants(False)
