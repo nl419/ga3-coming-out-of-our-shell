@@ -144,6 +144,8 @@ def _init_all_interpolants(do_plots):
         1.3877787807814457e-17,0.9999999999999999,0.4635639926515615,0.9922239502332814,-6.938893903907228e-18,0.9999999999999999,2.0816681711721685e-17,0.9999999999999999,0.0006123698714023407,0.9999999999999999,1.3877787807814457e-17,0.9999999999999999,2.7755575615628914e-17,0.9999999999999999,2.0816681711721685e-17,0.9999999999999999,0.19718309859154934,0.5027216174183514
     ]
 
+    global polys_K_c, polys_K_e, F_1_xs, F_1_ys, F_2_xs, F_2_ys
+
     polys_K_e = _find_polys(K_e_turb_dataset, len(Re_inv_classes), 4, do_plots)
     polys_K_c = _find_polys(K_c_turb_dataset, len(Re_inv_classes), 4, do_plots)
     F_1_xs, F_1_ys = _split_dataset(one_pass_dataset, len(R_classes))
@@ -156,38 +158,77 @@ def _init_all_interpolants(do_plots):
     # Do a sweep over many `R`s
 
     Re_invs = np.linspace(np.min(Re_inv_classes), np.max(Re_inv_classes), 10)
-    Rs = np.linspace(np.min(R_classes), np.max(R_classes), 10)
 
     # Plot all the results against the input data
     # First, the K_e and K_c
     xs = np.linspace(0, 1, 100)
-    # TODO plot ys
+    for i,Re_inv in enumerate(Re_invs):
+        ys = K_c_plus_K_e(xs, 1 / Re_inv, 0) # Find K_e
+        plt.plot(xs,ys,label=f"Re={1/Re_inv}")
 
     K_e_xs, K_e_ys = _split_dataset(K_e_turb_dataset, len(Re_inv_classes))
     K_c_xs, K_c_ys = _split_dataset(K_c_turb_dataset, len(Re_inv_classes))
-    for xs_dataset, ys_dataset in zip(K_e_xs, K_e_ys):
-        plt.plot(xs_dataset,ys_dataset)
-    
+    for i,_ in enumerate(Re_inv_classes):
+        plt.plot(K_e_xs[:,i],K_e_ys[:,i], "o")
+    plt.legend()
+    plt.show()
 
-def K_c_plus_K_e(sigma, re):
-    # Evaluate the relevant polys
-    # Add them up
-    # Lerp
-    # TODO make this function accept a list of sigmas.
+    for i,Re_inv in enumerate(Re_invs):
+        ys = K_c_plus_K_e(xs, 1 / Re_inv, 1) # Find K_c
+        plt.plot(xs,ys,label=f"Re={1/Re_inv}")
+
+    for i,_ in enumerate(Re_inv_classes):
+        plt.plot(K_c_xs[:,i],K_c_ys[:,i], "o")
+    plt.legend()
+    plt.show()
+
+    # Now do the correction factors also
+    ##### gosh diddly darn
+    Rs = np.linspace(np.min(R_classes), np.max(R_classes), 10)
+    # use the same xs
+    for i,_ in enumerate(R_classes):
+        plt.plot(F_1_xs[:,i],F_1_ys[:,i], "o")
+    for i,R in enumerate(Rs):
+        ys = F_1(xs, R)
+        plt.plot(xs,ys,label=f"R={R}")
+    plt.legend()
+    plt.show()
+    for i,_ in enumerate(R_classes):
+        plt.plot(F_2_xs[:,i],F_2_ys[:,i], "o")
+    for i,R in enumerate(Rs):
+        ys = F_2(xs, R)
+        plt.plot(xs,ys,label=f"R={R}")
+    plt.legend()
+    plt.show()
+
+def K_c_plus_K_e(sigma, re, _debug_switch = None):
     Re_inv = 1/re
     xs = Re_inv_classes
-    ys = np.zeros(np.shape(Re_inv_classes))
+    # Clamp Re to the valid range of [3000,inf)
+    interp_factor = np.interp(Re_inv, xs, np.arange(0, len(Re_inv_classes), 1), 0, len(Re_inv_classes) - 1)
+    interp_offset = int(np.floor(interp_factor))
+    interp_ratio = interp_factor - interp_offset
+    if (interp_offset == len(Re_inv_classes) - 1):
+        interp_offset -= 1
+        interp_ratio = 1
     assert(np.shape(Re_inv_classes) == np.shape(polys_K_e))
     assert(np.shape(Re_inv_classes) == np.shape(polys_K_c))
 
-    for i,_ in enumerate(ys):
-        ys[i] = polys_K_e[i](sigma) + polys_K_c[i](sigma)
-
-    return np.interp(Re_inv, xs, ys)
+    # Linear interpolate between the polynomials adjacent to this Reynolds number
+    if _debug_switch == 0:
+        return polys_K_e[interp_offset](sigma) * (1 - interp_ratio) \
+             + polys_K_e[interp_offset + 1](sigma) * interp_ratio
+    elif _debug_switch == 1:
+        return polys_K_c[interp_offset](sigma) * (1 - interp_ratio) \
+             + polys_K_c[interp_offset + 1](sigma) * interp_ratio
+    else:
+        return (polys_K_e[interp_offset](sigma) + polys_K_c[interp_offset](sigma)) * (1 - interp_ratio) \
+             + (polys_K_e[interp_offset + 1](sigma) + polys_K_c[interp_offset + 1](sigma)) * interp_ratio
 
 def F_1(P, R):
     xs = R_classes
     ys = np.zeros(np.shape(R_classes))
+    # TODO make the error go away
 
     for i,_ in enumerate(ys):
         ys[i] = np.interp(P, F_1_xs[i,:], F_1_ys[i,:])
