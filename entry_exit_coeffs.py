@@ -1,24 +1,59 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
+polys_K_e = np.array([])
+polys_K_c = np.array([])
+polys_F_1 = np.array([])
+polys_F_2 = np.array([])
 
-_n_sigma_coeffs = 4
-_n_re_coeffs = 3
-_sigma_re_coeffs_Ke = np.zeros((_n_sigma_coeffs, _n_re_coeffs))
-_sigma_re_coeffs_Kc = np.zeros((_n_sigma_coeffs, _n_re_coeffs))
+Re_inv_classes = np.reciprocal(np.array([1e30, 10000, 5000, 3000]))
+R_classes = np.array([0.2, 0.4, 0.6, 0.8, 1.1, 1.5, 2.0, 3.0, 5.0])
 
-def _K_poly(sigma, Re, sigma_re_coeffs):
-    assert type(Re) is not np.ndarray
-    assert np.shape(sigma_re_coeffs) == (_n_sigma_coeffs, _n_re_coeffs)
-    coeffs = np.zeros(_n_sigma_coeffs)
-    for i,pp_coeffs_i in enumerate(sigma_re_coeffs):
-        coeffs[i] = np.polynomial.Polynomial(pp_coeffs_i)(1 / Re)
-    return np.polynomial.Polynomial(coeffs)(sigma)
+def _find_polys(dataset: list, n_classes: int, poly_order: int, do_plots = False):
+    # Function which takes in a list of datapoints (from the digitiser)
+    # Outputs the polynomials for each class
+    # Later, use a lerping function between the polynomials
+    # Use 1/Re to lerp the K_c and K_e
+    # Simply use R to lerp the correction factor
 
-def Kc_plus_Ke(sigma, Re):
-    return _K_poly(sigma, Re, _sigma_re_coeffs_Kc) + _K_poly(sigma, Re, _sigma_re_coeffs_Ke)
+    # First step: polynomial given a list of classes
 
-def _calculate_poly_coeffs_entry_exit(do_plots=False):
+    assert(len(dataset) % n_classes == 0)
+    n_datapoints = int((len(dataset) / 2) / n_classes)
+    assert(n_datapoints * n_classes * 2 == len(dataset))
+
+    dataset_x = np.zeros((n_datapoints, n_classes))
+    dataset_y = np.zeros((n_datapoints, n_classes))
+
+    for i in range(n_datapoints):
+        for j in range(n_classes):
+            # Init x
+            dataset_x[i,j] = dataset[(i * n_classes + j) * 2]
+            # Init Ks
+            dataset_y[i,j] = dataset[(i * n_classes + j) * 2 + 1]
+    
+    # Find polynomial coefficients for each class
+    polys = []
+    for i in range(n_classes):
+        polys.append(np.polynomial.Polynomial.fit(dataset_x[:,i], dataset_y[:,i], poly_order))
+        
+        if do_plots:
+            xs = np.linspace(np.min(dataset_x),np.max(dataset_x),100)
+            ys = polys[i](xs)
+            
+            plt.plot(dataset_x[:,i], dataset_y[:,i], "o")
+            plt.plot(xs,ys)
+    if do_plots:
+        plt.show()
+    return np.array(polys)
+
+def _init_all_polys(do_plots):
+    # find the polys for all the things
+    # F one_pass
+    # F two_pass
+    # K_c
+    # K_e
+
     # https://apps.automeris.io/wpd/
     # K_e_turb_re_inf,,K_e_turb_re_10000,,K_e_turb_re_5000,,K_e_turb_re_3000,
     # X,Y,X,Y,X,Y,X,Y
@@ -52,70 +87,6 @@ def _calculate_poly_coeffs_entry_exit(do_plots=False):
         1.0006459948320414,0.5309534368070953,1.001291989664083,0.5886031042128609,1.0012919896640833,0.5966740576496677,1.000645994832042,0.6082039911308207
     ]
 
-    # Note: need n_datapoints = same for both K_e and K_c
-    # Same goes for n_re
-    n_datapoints = 11
-    n_re = 4
-
-    K_e_turb_x = np.zeros((n_datapoints, n_re))
-    K_c_turb_x = np.zeros((n_datapoints, n_re))
-    K_e_turb_y = np.zeros((n_datapoints, n_re))
-    K_c_turb_y = np.zeros((n_datapoints, n_re))
-
-    Re_list = np.array([1e30, 10000, 5000, 3000])
-    Re_inv_list = np.reciprocal(Re_list)
-    for i in range(n_datapoints):
-        for j in range(n_re):
-            # Init sigmas
-            K_e_turb_x[i,j] = K_e_turb_dataset[(i * n_re + j) * 2]
-            K_c_turb_x[i,j] = K_c_turb_dataset[(i * n_re + j) * 2]
-            # Init Ks
-            K_e_turb_y[i,j] = K_e_turb_dataset[(i * n_re + j) * 2 + 1]
-            K_c_turb_y[i,j] = K_c_turb_dataset[(i * n_re + j) * 2 + 1]
-    
-    for K_turb_x, K_turb_y, sigma_re_coeffs in zip((K_e_turb_x, K_c_turb_x), (K_e_turb_y, K_c_turb_y), (_sigma_re_coeffs_Ke, _sigma_re_coeffs_Kc)):
-        # Find polynomial coefficients for each Re_inv
-        polys = np.zeros((n_re, _n_sigma_coeffs))
-        for i,Re_inv in enumerate(Re_inv_list):
-            poly = np.polynomial.Polynomial.fit(K_turb_x[:,i], K_turb_y[:,i], _n_sigma_coeffs - 1)
-            polys[i,:] = poly.convert().coef
-            
-            if do_plots:
-                xs = np.linspace(0,1,100)
-                ys = poly(xs)
-                
-                plt.plot(K_turb_x[:,i], K_turb_y[:,i], "o")
-                plt.plot(xs,ys)
-        if do_plots:
-            plt.show()
-
-        # Fit a polynomial to each of the polynomial coefficients
-        for i,coeffs in enumerate(polys.T):
-            poly = np.polynomial.Polynomial.fit(Re_inv_list, coeffs, _n_re_coeffs - 1)
-            sigma_re_coeffs[i,:] = poly.convert().coef
-
-            # if do_plots:
-            #     xs = np.linspace(Re_inv_list.min(), Re_inv_list.max(), 100)
-            #     ys = poly(xs)
-
-            #     plt.plot(Re_inv_list, coeffs, "o")
-            #     plt.plot(xs, ys)
-            #     plt.show()
-        
-        for re_inv in np.linspace(Re_inv_list.min(), Re_inv_list.max(), 10):
-            xs = np.linspace(0,1,100)
-            ys = _K_poly(xs, 1/re_inv, sigma_re_coeffs)
-
-            if do_plots:
-                plt.plot(xs,ys,label=f"Re={1/re_inv}")
-        
-        if do_plots:
-            plt.legend()
-            for i in range(n_re):
-                plt.plot(K_turb_x[:,i], K_turb_y[:,i], "o")
-            plt.show()
-
-def _calculate_poly_coeffs_F():
     one_pass_dataset = [
         0.37456433454994087,0.9921968663594469,0.39440703233434427,0.9795724555628702,0.38250141366370216,0.9686353653719552,0.36563512054695924,0.9587960500329163,0.32198118542127174,0.9527481237656352,0.2763429805171438,0.9529615799868334,0.2321929779468462,0.9546495782312925,0.17117668225980567,0.962611156462585,0.1205778029095769,0.9644133190118152,
         0.40532051611576614,0.9903265832784726,0.42516321390016953,0.974530822909809,0.41325759522952754,0.9601987623436471,0.3963913021127846,0.9469644766293613,0.352737366987097,0.9364542988808426,0.30461882485991876,0.9351649607535322,0.2579884850665707,0.9350063079777365,0.19349971726725954,0.9424096145124716,0.13545982624787947,0.9436572912801484,
@@ -140,7 +111,7 @@ def _calculate_poly_coeffs_F():
         0.2311083123425692,0.9979999999999999,0.23488664987405541,0.9952,0.22481108312342565,0.9927999999999999,0.21599496221662465,0.9904,0.1630982367758186,0.9927999999999999,0.1542821158690176,0.9907999999999999,0.11460957178841305,0.9935999999999999,0.07745591939546598,0.9959999999999999,0.0428211586901763,0.9979999999999999,
         2.7755575615628914e-17,0.9999999999999999,0,0.9999999999999999,0,0.9999999999999999,-2.7755575615628914e-17,0.9999999999999999,0,1.0004,2.7755575615628914e-17,0.9999999999999999,0,0.9999999999999999,2.7755575615628914e-17,0.9999999999999999,0,0.9999999999999999
     ]
-
+    
     two_pass_dataset = [
         0.6333573305680111,0.9905479864946897,0.6293799395788878,0.9765391565790162,0.5882802326912797,0.9670280069602748,0.519338788879808,0.9673003435654102,0.455037634555647,0.9640941989867715,0.3721753222822436,0.9682824058687769,0.315166051438142,0.967056891145668,0.23031504367017688,0.9727470756681168,0.1580591073677691,0.9729541415166494,
         0.6671651539755598,0.9880185571166903,0.6631877629864364,0.9711006771007077,0.6220880560988283,0.9586227090108708,0.5531466122873566,0.957859341254052,0.4888454579631956,0.9518514306922787,0.4059831456897922,0.9544840178752536,0.34731662860022255,0.9492996654069412,0.25782533134494684,0.9531142111724351,0.17396867132426255,0.9510426735012708,
@@ -164,7 +135,27 @@ def _calculate_poly_coeffs_F():
         1.3877787807814457e-17,0.9999999999999999,0.4635639926515615,0.9922239502332814,-6.938893903907228e-18,0.9999999999999999,2.0816681711721685e-17,0.9999999999999999,0.0006123698714023407,0.9999999999999999,1.3877787807814457e-17,0.9999999999999999,2.7755575615628914e-17,0.9999999999999999,2.0816681711721685e-17,0.9999999999999999,0.19718309859154934,0.5027216174183514
     ]
 
+    polys_K_e = _find_polys(K_e_turb_dataset, len(Re_inv_classes), 4, do_plots)
+    polys_K_c = _find_polys(K_c_turb_dataset, len(Re_inv_classes), 4, do_plots)
+    polys_F_1 = _find_polys(one_pass_dataset, len(R_classes), 6, do_plots)
+    polys_F_2 = _find_polys(two_pass_dataset, len(R_classes), 6, do_plots)
+
+def K_c_plus_K_e(sigma, re):
+    # Evaluate the relevant polys
+    # Add them up
+    # Lerp
+    Re_inv = 1/re
+    xs = Re_inv_classes
+    ys = np.zeros(np.shape(Re_inv_classes))
+    assert(np.shape(Re_inv_classes) == np.shape(polys_K_e))
+    assert(np.shape(Re_inv_classes) == np.shape(polys_K_c))
+
+    for i,_ in enumerate(ys):
+        ys[i] = polys_K_e[i](sigma) + polys_K_c[i](sigma)
+
+    return np.interp(Re_inv, xs, ys)
+
 if __name__ == "__main__":
-    _calculate_poly_coeffs_entry_exit(True)
+    _init_all_polys(True)
 else:
-    _calculate_poly_coeffs_entry_exit()
+    _init_all_polys(False)
