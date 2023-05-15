@@ -28,6 +28,11 @@ def _split_dataset(dataset: list, n_classes: int):
             dataset_x[i,j] = dataset[(i * n_classes + j) * 2]
             # Init Ks
             dataset_y[i,j] = dataset[(i * n_classes + j) * 2 + 1]
+    # TODO actually sort the arrays based on x coord
+    for j in range(n_classes):
+        zip_result = list(zip(*[(x,y) for (x,y) in sorted(zip(dataset_x[:,j],dataset_y[:,j]), key=lambda pair: pair[0])]))
+        dataset_x[:,j] = zip_result[0]
+        dataset_y[:,j] = zip_result[1]
     return dataset_x, dataset_y
 
 def _find_polys(dataset: list, n_classes: int, poly_order: int, do_plots = False):
@@ -184,7 +189,8 @@ def _init_all_interpolants(do_plots):
 
     # Now do the correction factors also
     ##### gosh diddly darn
-    Rs = np.linspace(np.min(R_classes), np.max(R_classes), 10)
+    # Rs = np.linspace(np.min(R_classes), np.max(R_classes), 10)
+    Rs = R_classes
     # use the same xs
     for i,_ in enumerate(R_classes):
         plt.plot(F_1_xs[:,i],F_1_ys[:,i], "o")
@@ -226,23 +232,28 @@ def K_c_plus_K_e(sigma, re, _debug_switch = None):
              + (polys_K_e[interp_offset + 1](sigma) + polys_K_c[interp_offset + 1](sigma)) * interp_ratio
 
 def F_1(P, R):
-    xs = R_classes
-    ys = np.zeros(np.shape(R_classes))
-    # TODO make the error go away
-
-    for i,_ in enumerate(ys):
-        ys[i] = np.interp(P, F_1_xs[i,:], F_1_ys[i,:])
-    
-    return np.interp(R, xs, ys)
+    interp_factor = np.interp(R, R_classes, np.arange(0, len(R_classes), 1), 0, len(R_classes) - 1)
+    interp_offset = int(np.floor(interp_factor))
+    interp_ratio = interp_factor - interp_offset
+    if (interp_offset == len(R_classes) - 1):
+        # Handle edge case to avoid accessing beyond end of array
+        interp_offset -= 1
+        interp_ratio = 1
+    return np.interp(P, F_1_xs[:,interp_offset], F_1_ys[:,interp_offset]) * (1 - interp_ratio) \
+         + np.interp(P, F_1_xs[:,interp_offset + 1], F_1_ys[:,interp_offset + 1]) * interp_ratio
 
 def F_2(P, R):
-    xs = R_classes
-    ys = np.zeros(np.shape(R_classes))
-
-    for i,_ in enumerate(ys):
-        ys[i] = np.interp(P, F_2_xs[i,:], F_2_ys[i,:])
-    
-    return np.interp(R, xs, ys)
+    interp_factor = np.interp(R, R_classes, np.arange(0, len(R_classes), 1), 0, len(R_classes) - 1)
+    interp_offset = int(np.floor(interp_factor))
+    interp_ratio = interp_factor - interp_offset
+    if (interp_offset == len(R_classes) - 1):
+        # Handle edge case to avoid accessing beyond end of array
+        interp_offset -= 1
+        interp_ratio = 1
+    # TODO interpolate horizontally instead of vertically
+    # How?
+    return np.interp(P, F_2_xs[:,interp_offset], F_2_ys[:,interp_offset]) * (1 - interp_ratio) \
+         + np.interp(P, F_2_xs[:,interp_offset + 1], F_2_ys[:,interp_offset + 1]) * interp_ratio
 
 if __name__ == "__main__":
     _init_all_interpolants(True)
