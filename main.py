@@ -72,7 +72,8 @@ T2_out = 50
 del_T_lm = ((T2_in - T1_out) - (T2_out - T1_in))/(np.log((T2_in - T1_out)/(T2_out - T1_in)))
 F = 0.7 #correction factor, dependent on number of tube passes, will need to compute exact value
 A = N*np.pi*d_i*L_tube
-Q_dot_LMTD = H*A*del_T_lm*F
+A = N*np.pi*d_i*L_tube*F
+Q_dot_LMTD = H*A*del_T_lm
 
 #now using the effectiveness NTU method 
 #finding C_min
