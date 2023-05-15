@@ -1,15 +1,15 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-Re_inv_classes = np.reciprocal(np.array([1e30, 10000, 5000, 3000]))
-R_classes = np.array([0.2, 0.4, 0.6, 0.8, 1.1, 1.5, 2.0, 3.0, 5.0])
+_Re_inv_classes = np.reciprocal(np.array([1e30, 10000, 5000, 3000]))
+_R_classes = np.array([0.2, 0.4, 0.6, 0.8, 1.1, 1.5, 2.0, 3.0, 5.0])
 
-polys_K_e = np.array([])
-polys_K_c = np.array([])
-F_2_xs = np.zeros((len(R_classes), 20))
-F_2_ys = np.zeros_like(F_2_xs)
-F_1_xs = np.zeros((len(R_classes), 22))
-F_1_ys = np.zeros_like(F_1_xs)
+_polys_K_e = np.array([])
+_polys_K_c = np.array([])
+_F_2_xs = np.zeros((len(_R_classes), 20))
+_F_2_ys = np.zeros_like(_F_2_xs)
+_F_1_xs = np.zeros((len(_R_classes), 22))
+_F_1_ys = np.zeros_like(_F_1_xs)
 
 # Create the xs and ys for each F, then lerp.
 # Need to create the xs and ys separately for each class
@@ -148,12 +148,12 @@ def _init_all_interpolants(do_plots):
         1.3877787807814457e-17,0.9999999999999999,0.4635639926515615,0.9922239502332814,-6.938893903907228e-18,0.9999999999999999,2.0816681711721685e-17,0.9999999999999999,0.0006123698714023407,0.9999999999999999,1.3877787807814457e-17,0.9999999999999999,2.7755575615628914e-17,0.9999999999999999,2.0816681711721685e-17,0.9999999999999999,0.19718309859154934,0.5027216174183514
     ]
 
-    global polys_K_c, polys_K_e, F_1_xs, F_1_ys, F_2_xs, F_2_ys
+    global _polys_K_c, _polys_K_e, _F_1_xs, _F_1_ys, _F_2_xs, _F_2_ys
 
-    polys_K_e = _find_polys(K_e_turb_dataset, len(Re_inv_classes), 4, do_plots)
-    polys_K_c = _find_polys(K_c_turb_dataset, len(Re_inv_classes), 4, do_plots)
-    F_1_xs, F_1_ys = _split_dataset(one_pass_dataset, len(R_classes))
-    F_2_xs, F_2_ys = _split_dataset(two_pass_dataset, len(R_classes))
+    _polys_K_e = _find_polys(K_e_turb_dataset, len(_Re_inv_classes), 4, do_plots)
+    _polys_K_c = _find_polys(K_c_turb_dataset, len(_Re_inv_classes), 4, do_plots)
+    _F_1_xs, _F_1_ys = _split_dataset(one_pass_dataset, len(_R_classes))
+    _F_2_xs, _F_2_ys = _split_dataset(two_pass_dataset, len(_R_classes))
 
     if not do_plots:
         return
@@ -161,15 +161,15 @@ def _init_all_interpolants(do_plots):
     # Plot all the results against the input data
     # First, plot K_e and K_c
 
-    Re_invs = np.linspace(np.min(Re_inv_classes), np.max(Re_inv_classes), 10)
+    Re_invs = np.linspace(np.min(_Re_inv_classes), np.max(_Re_inv_classes), 10)
     xs = np.linspace(0, 1, 100)
     for i,Re_inv in enumerate(Re_invs):
         ys = K_c_plus_K_e(xs, 1 / Re_inv, 0) # 0 = Find K_e
         plt.plot(xs,ys,label=f"Re={1/Re_inv}")
 
-    K_e_xs, K_e_ys = _split_dataset(K_e_turb_dataset, len(Re_inv_classes))
-    K_c_xs, K_c_ys = _split_dataset(K_c_turb_dataset, len(Re_inv_classes))
-    for i,_ in enumerate(Re_inv_classes):
+    K_e_xs, K_e_ys = _split_dataset(K_e_turb_dataset, len(_Re_inv_classes))
+    K_c_xs, K_c_ys = _split_dataset(K_c_turb_dataset, len(_Re_inv_classes))
+    for i,_ in enumerate(_Re_inv_classes):
         plt.plot(K_e_xs[:,i],K_e_ys[:,i], "o")
     plt.legend()
     plt.show()
@@ -178,22 +178,22 @@ def _init_all_interpolants(do_plots):
         ys = K_c_plus_K_e(xs, 1 / Re_inv, 1) # 1 = Find K_c
         plt.plot(xs,ys,label=f"Re={1/Re_inv}")
 
-    for i,_ in enumerate(Re_inv_classes):
+    for i,_ in enumerate(_Re_inv_classes):
         plt.plot(K_c_xs[:,i],K_c_ys[:,i], "o")
     plt.legend()
     plt.show()
 
     # Plot correction factors
-    Rs = np.linspace(np.min(R_classes), np.max(R_classes), 10)
-    for i,_ in enumerate(R_classes):
-        plt.plot(F_1_xs[:,i],F_1_ys[:,i], "o")
+    Rs = np.linspace(np.min(_R_classes), np.max(_R_classes), 10)
+    for i,_ in enumerate(_R_classes):
+        plt.plot(_F_1_xs[:,i],_F_1_ys[:,i], "o")
     for i,R in enumerate(Rs):
         ys = F_1(xs, R)
         plt.plot(xs,ys,label=f"R={R}")
     plt.legend()
     plt.show()
-    for i,_ in enumerate(R_classes):
-        plt.plot(F_2_xs[:,i],F_2_ys[:,i], "o")
+    for i,_ in enumerate(_R_classes):
+        plt.plot(_F_2_xs[:,i],_F_2_ys[:,i], "o")
     for i,R in enumerate(Rs):
         ys = F_2(xs, R)
         plt.plot(xs,ys,label=f"R={R}")
@@ -202,53 +202,53 @@ def _init_all_interpolants(do_plots):
 
 def K_c_plus_K_e(sigma, re, _debug_switch = None):
     Re_inv = 1/re
-    xs = Re_inv_classes
+    xs = _Re_inv_classes
     # Clamp Re to the valid range of [3000,inf)
-    interp_factor = np.interp(Re_inv, xs, np.arange(0, len(Re_inv_classes), 1), 0, len(Re_inv_classes) - 1)
+    interp_factor = np.interp(Re_inv, xs, np.arange(0, len(_Re_inv_classes), 1), 0, len(_Re_inv_classes) - 1)
     interp_offset = int(np.floor(interp_factor))
     interp_ratio = interp_factor - interp_offset
-    if (interp_offset == len(Re_inv_classes) - 1):
+    if (interp_offset == len(_Re_inv_classes) - 1):
         interp_offset -= 1
         interp_ratio = 1
-    assert(np.shape(Re_inv_classes) == np.shape(polys_K_e))
-    assert(np.shape(Re_inv_classes) == np.shape(polys_K_c))
+    assert(np.shape(_Re_inv_classes) == np.shape(_polys_K_e))
+    assert(np.shape(_Re_inv_classes) == np.shape(_polys_K_c))
 
     # Linear interpolate between the polynomials adjacent to this Reynolds number
     if _debug_switch == 0:
-        return polys_K_e[interp_offset](sigma) * (1 - interp_ratio) \
-             + polys_K_e[interp_offset + 1](sigma) * interp_ratio
+        return _polys_K_e[interp_offset](sigma) * (1 - interp_ratio) \
+             + _polys_K_e[interp_offset + 1](sigma) * interp_ratio
     elif _debug_switch == 1:
-        return polys_K_c[interp_offset](sigma) * (1 - interp_ratio) \
-             + polys_K_c[interp_offset + 1](sigma) * interp_ratio
+        return _polys_K_c[interp_offset](sigma) * (1 - interp_ratio) \
+             + _polys_K_c[interp_offset + 1](sigma) * interp_ratio
     else:
-        return (polys_K_e[interp_offset](sigma) + polys_K_c[interp_offset](sigma)) * (1 - interp_ratio) \
-             + (polys_K_e[interp_offset + 1](sigma) + polys_K_c[interp_offset + 1](sigma)) * interp_ratio
+        return (_polys_K_e[interp_offset](sigma) + _polys_K_c[interp_offset](sigma)) * (1 - interp_ratio) \
+             + (_polys_K_e[interp_offset + 1](sigma) + _polys_K_c[interp_offset + 1](sigma)) * interp_ratio
 
 def F_1(P, R):
-    interp_factor = np.interp(R, R_classes, np.arange(0, len(R_classes), 1), 0, len(R_classes) - 1)
+    interp_factor = np.interp(R, _R_classes, np.arange(0, len(_R_classes), 1), 0, len(_R_classes) - 1)
     interp_offset = int(np.floor(interp_factor))
     interp_ratio = interp_factor - interp_offset
-    if (interp_offset == len(R_classes) - 1):
+    if (interp_offset == len(_R_classes) - 1):
         # Handle edge case to avoid accessing beyond end of array
         interp_offset -= 1
         interp_ratio = 1
-    ys = np.linspace(np.max(F_1_ys), np.min(F_1_ys), 100)
-    xs = np.interp(ys, np.flip(F_1_ys[:,interp_offset]),   np.flip(F_1_xs[:,interp_offset])) * (1 - interp_ratio) \
-       + np.interp(ys, np.flip(F_1_ys[:,interp_offset+1]), np.flip(F_1_xs[:,interp_offset+1])) * interp_ratio
+    ys = np.linspace(np.max(_F_1_ys), np.min(_F_1_ys), 100)
+    xs = np.interp(ys, np.flip(_F_1_ys[:,interp_offset]),   np.flip(_F_1_xs[:,interp_offset])) * (1 - interp_ratio) \
+       + np.interp(ys, np.flip(_F_1_ys[:,interp_offset+1]), np.flip(_F_1_xs[:,interp_offset+1])) * interp_ratio
     
     return np.interp(P, xs, ys)
 
 def F_2(P, R):
-    interp_factor = np.interp(R, R_classes, np.arange(0, len(R_classes), 1), 0, len(R_classes) - 1)
+    interp_factor = np.interp(R, _R_classes, np.arange(0, len(_R_classes), 1), 0, len(_R_classes) - 1)
     interp_offset = int(np.floor(interp_factor))
     interp_ratio = interp_factor - interp_offset
-    if (interp_offset == len(R_classes) - 1):
+    if (interp_offset == len(_R_classes) - 1):
         # Handle edge case to avoid accessing beyond end of array
         interp_offset -= 1
         interp_ratio = 1
-    ys = np.linspace(np.max(F_2_ys), np.min(F_2_ys), 100)
-    xs = np.interp(ys, np.flip(F_2_ys[:,interp_offset]),   np.flip(F_2_xs[:,interp_offset])) * (1 - interp_ratio) \
-       + np.interp(ys, np.flip(F_2_ys[:,interp_offset+1]), np.flip(F_2_xs[:,interp_offset+1])) * interp_ratio
+    ys = np.linspace(np.max(_F_2_ys), np.min(_F_2_ys), 100)
+    xs = np.interp(ys, np.flip(_F_2_ys[:,interp_offset]),   np.flip(_F_2_xs[:,interp_offset])) * (1 - interp_ratio) \
+       + np.interp(ys, np.flip(_F_2_ys[:,interp_offset+1]), np.flip(_F_2_xs[:,interp_offset+1])) * interp_ratio
     
     return np.interp(P, xs, ys)
 
