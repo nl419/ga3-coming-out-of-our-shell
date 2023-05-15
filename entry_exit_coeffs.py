@@ -28,7 +28,6 @@ def _split_dataset(dataset: list, n_classes: int):
             dataset_x[i,j] = dataset[(i * n_classes + j) * 2]
             # Init Ks
             dataset_y[i,j] = dataset[(i * n_classes + j) * 2 + 1]
-    # TODO actually sort the arrays based on x coord
     for j in range(n_classes):
         zip_result = list(zip(*[(x,y) for (x,y) in sorted(zip(dataset_x[:,j],dataset_y[:,j]), key=lambda pair: pair[0])]))
         dataset_x[:,j] = zip_result[0]
@@ -159,16 +158,13 @@ def _init_all_interpolants(do_plots):
     if not do_plots:
         return
 
-    # Do a sweep over many `R_inv`s
-    # Do a sweep over many `R`s
+    # Plot all the results against the input data
+    # First, plot K_e and K_c
 
     Re_invs = np.linspace(np.min(Re_inv_classes), np.max(Re_inv_classes), 10)
-
-    # Plot all the results against the input data
-    # First, the K_e and K_c
     xs = np.linspace(0, 1, 100)
     for i,Re_inv in enumerate(Re_invs):
-        ys = K_c_plus_K_e(xs, 1 / Re_inv, 0) # Find K_e
+        ys = K_c_plus_K_e(xs, 1 / Re_inv, 0) # 0 = Find K_e
         plt.plot(xs,ys,label=f"Re={1/Re_inv}")
 
     K_e_xs, K_e_ys = _split_dataset(K_e_turb_dataset, len(Re_inv_classes))
@@ -179,7 +175,7 @@ def _init_all_interpolants(do_plots):
     plt.show()
 
     for i,Re_inv in enumerate(Re_invs):
-        ys = K_c_plus_K_e(xs, 1 / Re_inv, 1) # Find K_c
+        ys = K_c_plus_K_e(xs, 1 / Re_inv, 1) # 1 = Find K_c
         plt.plot(xs,ys,label=f"Re={1/Re_inv}")
 
     for i,_ in enumerate(Re_inv_classes):
@@ -187,11 +183,8 @@ def _init_all_interpolants(do_plots):
     plt.legend()
     plt.show()
 
-    # Now do the correction factors also
-    ##### gosh diddly darn
-    # Rs = np.linspace(np.min(R_classes), np.max(R_classes), 10)
-    Rs = R_classes
-    # use the same xs
+    # Plot correction factors
+    Rs = np.linspace(np.min(R_classes), np.max(R_classes), 10)
     for i,_ in enumerate(R_classes):
         plt.plot(F_1_xs[:,i],F_1_ys[:,i], "o")
     for i,R in enumerate(Rs):
@@ -239,8 +232,11 @@ def F_1(P, R):
         # Handle edge case to avoid accessing beyond end of array
         interp_offset -= 1
         interp_ratio = 1
-    return np.interp(P, F_1_xs[:,interp_offset], F_1_ys[:,interp_offset]) * (1 - interp_ratio) \
-         + np.interp(P, F_1_xs[:,interp_offset + 1], F_1_ys[:,interp_offset + 1]) * interp_ratio
+    ys = np.linspace(np.max(F_1_ys), np.min(F_1_ys), 100)
+    xs = np.interp(ys, np.flip(F_1_ys[:,interp_offset]),   np.flip(F_1_xs[:,interp_offset])) * (1 - interp_ratio) \
+       + np.interp(ys, np.flip(F_1_ys[:,interp_offset+1]), np.flip(F_1_xs[:,interp_offset+1])) * interp_ratio
+    
+    return np.interp(P, xs, ys)
 
 def F_2(P, R):
     interp_factor = np.interp(R, R_classes, np.arange(0, len(R_classes), 1), 0, len(R_classes) - 1)
@@ -250,10 +246,11 @@ def F_2(P, R):
         # Handle edge case to avoid accessing beyond end of array
         interp_offset -= 1
         interp_ratio = 1
-    # TODO interpolate horizontally instead of vertically
-    # How?
-    return np.interp(P, F_2_xs[:,interp_offset], F_2_ys[:,interp_offset]) * (1 - interp_ratio) \
-         + np.interp(P, F_2_xs[:,interp_offset + 1], F_2_ys[:,interp_offset + 1]) * interp_ratio
+    ys = np.linspace(np.max(F_2_ys), np.min(F_2_ys), 100)
+    xs = np.interp(ys, np.flip(F_2_ys[:,interp_offset]),   np.flip(F_2_xs[:,interp_offset])) * (1 - interp_ratio) \
+       + np.interp(ys, np.flip(F_2_ys[:,interp_offset+1]), np.flip(F_2_xs[:,interp_offset+1])) * interp_ratio
+    
+    return np.interp(P, xs, ys)
 
 if __name__ == "__main__":
     _init_all_interpolants(True)
