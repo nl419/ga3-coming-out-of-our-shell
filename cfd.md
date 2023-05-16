@@ -3,29 +3,18 @@
 - Most obviously, the shell-side pressure drop correlations are very poor.
   - The other correlations are a little more believable.
 - It might be worth running a batch of CFD simulations to obtain the mass flow rate for different shell configurations.
-  - I.e. (2,3,4 baffles) x (10-20 tubes) = 33 configurations
-  - Note that the number of tube passes has no effect on the shell hydraulics
+- Most likely, just find a few near-optimal configurations from `main.py`, then test them out in OpenFOAM
 
-# Automation
-- I am ok with manually creating 33 `.stl` files.
-- I am not ok with manually creating 33 meshes.
-- I am not ok with manually post-processing 33 results.
-- Therefore need to automate those processes.
 
-## `.stl` creation
+# `.stl` creation
 - Ensure the `.stl` is only of the shell-side geometry, and is appropriately labelled
-- Option 1: SALOME
-  - At 5 mins per `.stl`, this will take me 2 hrs 45 mins.
-  - Not fun.
-- Option 2: Blender
-  - Could probably do 2 mins per `.stl`, meaning I'll be done in just over 1 hr.
-  - Fine.
+- Use Blender + scripts to automate this
 
-## Meshing
+# Meshing
 - `cfMesh` should be able to handle this with no troubles.
 - Add a bunch of inflation layers to ensure good functioning of k-omega model.
 
-## Simulation
+# Simulation
 - Use RANS k-omega turbulence model
 - Use `simpleFoam`
 - Solvers:
@@ -33,10 +22,10 @@
   - `u`: `smoothSolver`, `GaussSeidel`
 - Solve until mass flow rate is converged
 
-## Post Processing
+# Post Processing
 - Simply output mass flow rate to console.
 
-# ~~Heat transfer~~
+# ~~Heat transfer~~ ignore this
 ## Summary
 - I do not have the time nor inclination to set up a simulation workflow for this (much less, set it up for OpenFOAM)
 - I trust the heat transfer coefficient correlations
