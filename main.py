@@ -99,7 +99,7 @@ def find_Q(N_tube, N_b, use_entu = False):
      R_c = C_min / C_max
 
      # Note: if T_tube_in - T_shell_out == T_tube_out - T_shell_in, there is a div/0 that breaks the iteration.
-     # Also, if T_tube_in - T_shell_out == 0 or T_tube_out == T_shell_in, there is a log(0) or log(NaN)
+     # Also, if T_tube_in == T_shell_out or T_tube_out == T_shell_in, there is a log(0) or log(NaN)
      T_shell_out = 30
      T_tube_out = 40
      T_shell_out_old = 0
@@ -153,5 +153,4 @@ def one_config():
      print(find_Q(N_tubes, N_baffles, use_entu=True))
      print(find_Q(N_tubes, N_baffles, use_entu=False))
 
-# TODO make the error not exist (go through with a debugger, see what it's doing)
 one_config()
