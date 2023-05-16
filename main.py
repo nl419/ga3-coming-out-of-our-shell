@@ -106,6 +106,10 @@ def find_Q(N_tube, N_b, use_entu = False):
      T_tube_out_old = 0
      tolerance = 1e-3
      relaxation_factor = 0.8
+     if use_entu:
+          # ENTU tends to be more stable and tends to converge faster.
+          # Typically 0.23 ms for ENTU and 0.3 ms for LMTD on my machine
+          relaxation_factor = 1.0
 
      while abs(T_shell_out - T_shell_out_old) > tolerance and abs(T_tube_out - T_tube_out_old) > tolerance:
           T_shell_out_old = T_shell_out
@@ -153,4 +157,15 @@ def one_config():
      print(find_Q(N_tubes, N_baffles, use_entu=True))
      print(find_Q(N_tubes, N_baffles, use_entu=False))
 
-one_config()
+def benchmark():
+     N_tubes = 13
+     N_baffles = 9
+     import timeit
+     num_iters = 2000
+     print(f'ENTU: {timeit.timeit("find_Q(N_tubes, N_baffles, use_entu=True)",  globals=locals(), setup="from __main__ import find_Q", number=num_iters) * 1e3 / num_iters} ms')
+     print(f'LMTD: {timeit.timeit("find_Q(N_tubes, N_baffles, use_entu=False)", globals=locals(), setup="from __main__ import find_Q", number=num_iters) * 1e3 / num_iters} ms')
+
+if __name__ == "__main__":
+     # one_config()
+     benchmark()
+     
