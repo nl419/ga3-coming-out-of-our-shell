@@ -22,16 +22,16 @@ T_tube_in = 60  ### 2 == hot / tube, 1 == cold / shell
 Y = 0.014
 
 def flow_rate_shell(p):
-     """Find the flow rate for a given pressure drop for the shell side compressor"""
+     """Find the flow rate for a given pressure drop for the shell side compressor. p in Pa"""
      comp_flow_rate_shell = [0.7083, 0.6417, 0.5750, 0.5080, 0.4250, 0.3583, 0.3083, 0.2417, 0.1917, 0.1583]
      comp_p_rise_shell = [0.1310, 0.2017, 0.2750, 0.3417, 0.4038, 0.4503, 0.4856, 0.5352, 0.5717, 0.5876]
-     return np.interp(p, comp_p_rise_shell, comp_flow_rate_shell)
+     return np.interp(p / 1e5, comp_p_rise_shell, comp_flow_rate_shell)
 
 def flow_rate_tube(p):
-     """Find the flow rate for a given pressure drop for the tube side compressor"""
+     """Find the flow rate for a given pressure drop for the tube side compressor. p in Pa"""
      comp_flow_rate_tube = [0.4722, 0.4340, 0.3924, 0.3507, 0.3021, 0.2535, 0.1979, 0.1493, 0.1111, 0.0694]
      comp_p_rise_tube = [0.0538, 0.1192, 0.1727, 0.2270, 0.2814, 0.3366, 0.3907, 0.4456, 0.4791, 0.5115]
-     return np.interp(p, comp_p_rise_tube, comp_flow_rate_tube)
+     return np.interp(p / 1e5, comp_p_rise_tube, comp_flow_rate_tube)
 
 def find_H_mdots(N_tube, N_baffle, is_square = False):
      """Find overall heat transfer coefficient for a given number of tubes and number of baffles"""
@@ -81,7 +81,7 @@ def find_H_mdots(N_tube, N_baffle, is_square = False):
           del_p_total_shell = del_p_friction_shell + del_p_noz_shell
 
           mdot_shell = flow_rate_shell(del_p_total_shell) * relaxation_factor + mdot_shell * (1 - relaxation_factor)
-          mdot_tube = flow_rate_shell(del_p_total_tube) * relaxation_factor + mdot_tube * (1 - relaxation_factor)
+          mdot_tube = flow_rate_tube(del_p_total_tube) * relaxation_factor + mdot_tube * (1 - relaxation_factor)
 
      Nu_i = 0.023 * Re_tube**0.8 * Pr**0.3
      Nu_o = c * Re_sh**0.6 * Pr**0.3
@@ -98,7 +98,9 @@ def find_Q(N_tube, N_b, use_entu = False):
      C_max = cp * max(mdot_shell, mdot_tube)
      R_c = C_min / C_max
 
-     T_shell_out = 40
+     # Note: if T_tube_in - T_shell_out == T_tube_out - T_shell_in, there is a div/0 that breaks the iteration.
+     # Also, if T_tube_in - T_shell_out == 0 or T_tube_out == T_shell_in, there is a log(0) or log(NaN)
+     T_shell_out = 30
      T_tube_out = 40
      T_shell_out_old = 0
      T_tube_out_old = 0
@@ -109,24 +111,25 @@ def find_Q(N_tube, N_b, use_entu = False):
           T_shell_out_old = T_shell_out
           T_tube_out_old = T_tube_out
 
-          lmtd = ((T_tube_in - T_shell_out) - (T_tube_out - T_shell_in)) / (np.log((T_tube_in - T_shell_out) / (T_tube_out - T_shell_in)))
           R = (T_tube_in - T_tube_out) / (T_shell_out - T_shell_in)
           P = (T_shell_out - T_shell_in) / (T_tube_in - T_shell_in)
           F = F_1(P, R) # use F_1 for one pass, F_2 for 2 passes
           A = N_tube * np.pi * d_i * L_tube * F
+
           if use_entu:
-               NTU = H*A/C_min
+               NTU = H * A / C_min
                effectiveness = (1 - np.exp(-NTU * (1 - R_c))) / (1 - R_c * np.exp(-NTU * (1 - R_c)))
                Q_max = C_min * (T_tube_in - T_shell_in)
                Q = effectiveness * Q_max 
           else:
+               lmtd = ((T_tube_in - T_shell_out) - (T_tube_out - T_shell_in)) / (np.log((T_tube_in - T_shell_out) / (T_tube_out - T_shell_in)))
                Q = H * A * lmtd
 
           C_tube = mdot_tube * cp
           C_shell = mdot_shell * cp
 
           T_shell_out = (T_shell_in + Q / C_shell) * relaxation_factor + T_shell_out * (1 - relaxation_factor)
-          T_tube_out = (T_tube_in + Q / C_tube) * relaxation_factor + T_tube_out * (1 - relaxation_factor)
+          T_tube_out = (T_tube_in - Q / C_tube) * relaxation_factor + T_tube_out * (1 - relaxation_factor)
      
      return Q
 
@@ -149,5 +152,6 @@ def one_config():
      N_baffles = 9
      print(find_Q(N_tubes, N_baffles, use_entu=True))
      print(find_Q(N_tubes, N_baffles, use_entu=False))
-     
+
+# TODO make the error not exist (go through with a debugger, see what it's doing)
 one_config()
