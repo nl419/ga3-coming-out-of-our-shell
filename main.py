@@ -298,17 +298,18 @@ def two_configs():
 
 def one_config():
     tube_passes = 4
-    shell_passes = 4
-    n_tubes = 16
+    shell_passes = 2
+    n_tubes = 20
     n_baffles = 6
-    L_tube, baffle_spacing = calculate_tube_length_baffle_spacing(1, 1, n_tubes, n_baffles)
+    # L_tube, baffle_spacing = calculate_tube_length_baffle_spacing(1, 1, n_tubes, n_baffles)
+    L_tube = 0.172
+    baffle_spacing = 0.020
     geom = HXGeometry(n_tubes, n_baffles, L_tube, baffle_spacing, tube_passes=tube_passes, shell_passes=shell_passes)
     print(find_Q(geom, use_entu=True))
 
 
-
 if __name__ == "__main__":
-    # one_config()
+    one_config()
     # benchmark()
     # brute_force_11()
     # brute_force_12()
@@ -316,4 +317,4 @@ if __name__ == "__main__":
     # brute_force_custom()
     # plot_graphs()
     # two_configs()
-    brute_force_all()
+    # brute_force_all()
