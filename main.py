@@ -44,13 +44,15 @@ def flow_rate_tube(p):
 
 def find_H_mdots(geom: HXGeometry, is_square = False):
     """Find overall heat transfer coefficient for a given number of tubes and number of baffles"""
+    assert(geom.N_tube % geom.tube_passes == 0)
+
     A_tube_inner = (np.pi / 4) * d_i**2               # Area of a single tube
     A_tube_outer = (np.pi / 4) * d_o**2               # Area of a single tube
     A_shell = (np.pi / 4) * d_sh**2             # Area of the shell (ignoring baffles, tubes, etc)
     A_noz  = (np.pi / 4) * d_noz**2             # Area of inlet / outlet nozzles
     sigma = (geom.N_tube * A_tube_outer) / A_shell 
     baffle_spacing = geom.L_tube / (geom.N_baffle + 1)                 # Shell baffle factor
-    A_shell_flow = d_sh * baffle_spacing * sigma   # Flow area of shell taking into account baffles, etc
+    A_shell_flow = d_sh * baffle_spacing * np.sqrt(sigma)   # Flow area of shell taking into account baffles, etc
     d_sh_characteristic = d_sh * (A_shell_flow / A_shell)
     # d_sh_characteristic = d_sh * (1 - sigma)
     A_i = np.pi*d_i*geom.L_tube 
@@ -74,14 +76,14 @@ def find_H_mdots(geom: HXGeometry, is_square = False):
         mdot_shell_old = mdot_shell
         mdot_tube_old = mdot_tube
 
-        V_tube = mdot_tube / (rho * A_tube_inner * geom.N_tube)
+        V_tube = mdot_tube / (rho * A_tube_inner * geom.N_tube / geom.tube_passes)
         Re_tube = rho * V_tube * d_i / mu
         V_noz_tube = mdot_tube / (rho * A_noz)
         f = (1.82 * np.log10(Re_tube) - 1.64) ** (-2)
 
-        del_p_ends_tube = 0.5 * rho * (V_tube**2) * K_c_plus_K_e(sigma, Re_tube)
+        del_p_ends_tube = 0.5 * rho * (V_tube**2) * K_c_plus_K_e(sigma, Re_tube) * geom.tube_passes
         del_p_noz_tube = rho * V_noz_tube**2
-        del_p_friction_tube = 0.5 * rho * (V_tube**2) * (f * geom.L_tube / d_i)
+        del_p_friction_tube = 0.5 * rho * (V_tube**2) * (f * geom.L_tube * geom.tube_passes / d_i)
         del_p_total_tube = del_p_ends_tube + del_p_noz_tube + del_p_friction_tube
 
         V_sh = mdot_shell / (rho * A_shell_flow)
@@ -159,7 +161,7 @@ def benchmark():
     print(f'ENTU: {timeit.timeit("find_Q(geom, use_entu=True)",  globals=locals(), setup="from __main__ import find_Q", number=num_iters) * 1e3 / num_iters} ms')
     print(f'LMTD: {timeit.timeit("find_Q(geom, use_entu=False)", globals=locals(), setup="from __main__ import find_Q", number=num_iters) * 1e3 / num_iters} ms')
 
-def brute_force():
+def brute_force_11():
     max_q = 0
     max_n_tubes = 0
     max_n_baffles = 0
@@ -174,24 +176,46 @@ def brute_force():
                 max_n_tubes = N_tubes
     print(f"max_q = {max_q}, max_n_baffles = {max_n_baffles}, max_n_tubes = {max_n_tubes}")
 
+def brute_force_12():
+    max_q = 0
+    max_n_tubes = 0
+    max_n_baffles = 0
+    for N_tubes in np.arange(2, 15) * 2:
+        for N_baffles in np.arange(2, 10):
+            print(N_tubes, N_baffles)
+            L_tube, baffle_spacing = calculate_tube_length_baffle_spacing(1, 1, N_tubes, N_baffles)
+            geom = HXGeometry(N_tubes, N_baffles, L_tube, baffle_spacing, tube_passes=2)
+            q = find_Q(geom, use_entu=True)
+            if q > max_q:
+                max_q = q
+                max_n_baffles = N_baffles
+                max_n_tubes = N_tubes
+    print(f"max_q = {max_q}, max_n_baffles = {max_n_baffles}, max_n_tubes = {max_n_tubes}")
+
+
 def plot_graphs():
-    max_n_tubes = 10
-    max_n_baffles = 9
-    n_tubes_array = np.arange(max_n_tubes - 4, max_n_tubes + 4)
+    tube_passes = 2
+    max_n_tubes = 12
+    max_n_baffles = 2
+    n_tubes_array = max_n_tubes + np.arange(-3, 10) * tube_passes
     n_baffles_array = np.arange(max_n_baffles - 4, max_n_baffles + 4)
 
     qs = np.zeros(np.shape(n_tubes_array))
     ls = np.zeros(np.shape(n_tubes_array))
+    areas = np.zeros(np.shape(n_tubes_array))
 
     for i,n_tubes in enumerate(n_tubes_array):
         L_tube, baffle_spacing = calculate_tube_length_baffle_spacing(1, 1, n_tubes, max_n_baffles)
-        geom = HXGeometry(n_tubes, max_n_baffles, L_tube, baffle_spacing)
+        geom = HXGeometry(n_tubes, max_n_baffles, L_tube, baffle_spacing, tube_passes=tube_passes)
         qs[i] = find_Q(geom, use_entu=True)
         ls[i] = L_tube
+        areas[i] = L_tube * n_tubes
     
     plt.plot(n_tubes_array, qs)
     plt.show()
     plt.plot(n_tubes_array, ls)
+    plt.show()
+    plt.plot(n_tubes_array, areas)
     plt.show()
 
     qs = np.zeros(np.shape(n_baffles_array))
@@ -199,7 +223,7 @@ def plot_graphs():
 
     for i,n_baffles in enumerate(n_baffles_array):
         L_tube, baffle_spacing = calculate_tube_length_baffle_spacing(1, 1, max_n_tubes, n_baffles)
-        geom = HXGeometry(max_n_tubes, n_baffles, L_tube, baffle_spacing)
+        geom = HXGeometry(max_n_tubes, n_baffles, L_tube, baffle_spacing, tube_passes=tube_passes)
         qs[i] = find_Q(geom, use_entu=True)
         ls[i] = L_tube
     
@@ -208,8 +232,24 @@ def plot_graphs():
     plt.plot(n_baffles_array, ls)
     plt.show()
 
+def two_configs():
+    tube_passes = 2
+    n_tubes = 12
+    n_baffles = 2
+    L_tube, baffle_spacing = calculate_tube_length_baffle_spacing(1, 1, n_tubes, n_baffles)
+    geom = HXGeometry(n_tubes, n_baffles, L_tube, baffle_spacing, tube_passes=tube_passes)
+    find_Q(geom, use_entu=True)
+    n_tubes = 20
+    L_tube, baffle_spacing = calculate_tube_length_baffle_spacing(1, 1, n_tubes, n_baffles)
+    geom = HXGeometry(n_tubes, n_baffles, L_tube, baffle_spacing, tube_passes=tube_passes)
+    find_Q(geom, use_entu=True)
+
+
+
 if __name__ == "__main__":
     # one_config()
     # benchmark()
-    # brute_force()
-    plot_graphs()
+    # brute_force_11()
+    # brute_force_12()
+    # plot_graphs()
+    two_configs()
