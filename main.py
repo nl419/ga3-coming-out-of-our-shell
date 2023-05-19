@@ -3,6 +3,7 @@ from matplotlib import pyplot as plt
 from entry_exit_coeffs import K_c_plus_K_e, F_1, F_2
 from mass_estimate import calculate_tube_length_baffle_spacing
 from dataclasses import dataclass
+from correction_factor import correction_factor
 
 # Geometry configuration
 d_i = 0.006
@@ -52,7 +53,7 @@ def find_H_mdots(geom: HXGeometry, is_square = False):
     A_noz  = (np.pi / 4) * d_noz**2             # Area of inlet / outlet nozzles
     sigma = (geom.N_tube * A_tube_outer) / A_shell 
     baffle_spacing = geom.L_tube / (geom.N_baffle + 1)                 # Shell baffle factor
-    A_shell_flow = d_sh * baffle_spacing * sigma   # Flow area of shell taking into account baffles, etc
+    A_shell_flow = d_sh * baffle_spacing * (1 - sigma) / geom.shell_passes   # Flow area of shell taking into account baffles, etc
     # d_sh_characteristic = d_sh * (A_shell_flow / A_shell)
     d_sh_characteristic = d_sh * (1 - sigma)
     A_i = np.pi*d_i*geom.L_tube 
@@ -91,7 +92,7 @@ def find_H_mdots(geom: HXGeometry, is_square = False):
         del_p_friction_shell = 4 * a * Re_sh**(-0.15) * geom.N_tube * rho * V_sh**2
         V_noz_shell = mdot_shell / (rho * A_noz)
         del_p_noz_shell = rho * V_noz_shell**2
-        del_p_total_shell = del_p_friction_shell + del_p_noz_shell
+        del_p_total_shell = del_p_friction_shell * geom.shell_passes + del_p_noz_shell
 
         mdot_shell = flow_rate_shell(del_p_total_shell) * relaxation_factor + mdot_shell * (1 - relaxation_factor)
         mdot_tube = flow_rate_tube(del_p_total_tube) * relaxation_factor + mdot_tube * (1 - relaxation_factor)
@@ -130,7 +131,8 @@ def find_Q(geom: HXGeometry, use_entu = False):
 
         R = (T_tube_in - T_tube_out) / (T_shell_out - T_shell_in)
         P = (T_shell_out - T_shell_in) / (T_tube_in - T_shell_in)
-        F = F_1(P, R) # use F_1 for one pass, F_2 for 2 passes
+        F = correction_factor(T_shell_in, T_tube_in, T_shell_out, T_tube_out, geom.shell_passes)
+        # F = F_1(P, R) # use F_1 for one pass, F_2 for 2 passes
         A = geom.N_tube * np.pi * d_i * geom.L_tube * F
 
         if use_entu:
@@ -182,7 +184,7 @@ def brute_force_12():
     max_n_baffles = 0
     for N_tubes in np.arange(2, 15) * 2:
         for N_baffles in np.arange(2, 10):
-            print(N_tubes, N_baffles)
+            # print(N_tubes, N_baffles)
             L_tube, baffle_spacing = calculate_tube_length_baffle_spacing(1, 1, N_tubes, N_baffles)
             geom = HXGeometry(N_tubes, N_baffles, L_tube, baffle_spacing, tube_passes=2)
             q = find_Q(geom, use_entu=True)
@@ -192,6 +194,37 @@ def brute_force_12():
                 max_n_tubes = N_tubes
     print(f"max_q = {max_q}, max_n_baffles = {max_n_baffles}, max_n_tubes = {max_n_tubes}")
 
+def brute_force_14():
+    max_q = 0
+    max_n_tubes = 0
+    max_n_baffles = 0
+    for N_tubes in np.arange(2, 7) * 4:
+        for N_baffles in np.arange(2, 10):
+            # print(N_tubes, N_baffles)
+            L_tube, baffle_spacing = calculate_tube_length_baffle_spacing(1, 1, N_tubes, N_baffles)
+            geom = HXGeometry(N_tubes, N_baffles, L_tube, baffle_spacing, tube_passes=4)
+            q = find_Q(geom, use_entu=True)
+            if q > max_q:
+                max_q = q
+                max_n_baffles = N_baffles
+                max_n_tubes = N_tubes
+    print(f"max_q = {max_q}, max_n_baffles = {max_n_baffles}, max_n_tubes = {max_n_tubes}")
+
+def brute_force_22():
+    max_q = 0
+    max_n_tubes = 0
+    max_n_baffles = 0
+    for N_tubes in np.arange(2, 14) * 2:
+        for N_baffles in np.arange(2, 15):
+            # print(N_tubes, N_baffles)
+            L_tube, baffle_spacing = calculate_tube_length_baffle_spacing(1, 1, N_tubes, N_baffles)
+            geom = HXGeometry(N_tubes, N_baffles, L_tube, baffle_spacing, tube_passes=2, shell_passes=2)
+            q = find_Q(geom, use_entu=True)
+            if q > max_q:
+                max_q = q
+                max_n_baffles = N_baffles
+                max_n_tubes = N_tubes
+    print(f"max_q = {max_q}, max_n_baffles = {max_n_baffles}, max_n_tubes = {max_n_tubes}")
 
 def plot_graphs():
     tube_passes = 2
@@ -249,7 +282,9 @@ def two_configs():
 if __name__ == "__main__":
     # one_config()
     # benchmark()
-    brute_force_11()
+    # brute_force_11()
     # brute_force_12()
+    # brute_force_14()
+    brute_force_22()
     # plot_graphs()
     # two_configs()
