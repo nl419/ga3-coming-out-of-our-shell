@@ -1,10 +1,9 @@
 import numpy as np
-from scipy import interpolate
 from matplotlib import pyplot as plt
 from entry_exit_coeffs import K_c_plus_K_e, F_1, F_2
+from mass_estimate import calculate_tube_length_baffle_spacing
 
 # Geometry configuration
-L_tube = 0.35
 d_i = 0.006
 d_o = 0.008
 d_noz = 0.02
@@ -33,15 +32,17 @@ def flow_rate_tube(p):
     comp_p_rise_tube = [0.0538, 0.1192, 0.1727, 0.2270, 0.2814, 0.3366, 0.3907, 0.4456, 0.4791, 0.5115]
     return np.interp(p / 1e5, comp_p_rise_tube, comp_flow_rate_tube)
 
-def find_H_mdots(N_tube, N_baffle, is_square = False):
+def find_H_mdots(N_tube, N_baffle, L_tube, baffle_spacing, is_square = False):
     """Find overall heat transfer coefficient for a given number of tubes and number of baffles"""
-    A_tube = (np.pi / 4) * d_i**2               # Area of a single tube
+    A_tube_inner = (np.pi / 4) * d_i**2               # Area of a single tube
+    A_tube_outer = (np.pi / 4) * d_o**2               # Area of a single tube
     A_shell = (np.pi / 4) * d_sh**2             # Area of the shell (ignoring baffles, tubes, etc)
     A_noz  = (np.pi / 4) * d_noz**2             # Area of inlet / outlet nozzles
-    B = L_tube / (N_baffle + 1)                 # Shell baffle factor
-    A_shell_flow = (d_sh / Y) * (Y - d_o) * B   # Flow area of shell taking into account baffles, tubes, etc
-    sigma = (N_tube * A_tube) / A_shell 
-    d_sh_characteristic = d_sh * (A_shell_flow / A_shell)
+    sigma = (N_tube * A_tube_outer) / A_shell 
+    baffle_spacing = L_tube / (N_baffle + 1)                 # Shell baffle factor
+    A_shell_flow = d_sh * baffle_spacing * sigma   # Flow area of shell taking into account baffles, etc
+    # d_sh_characteristic = d_sh * (A_shell_flow / A_shell)
+    d_sh_characteristic = d_sh * (1 - sigma)
     A_i = np.pi*d_i*L_tube 
     A_o = np.pi*d_o*L_tube
 
@@ -63,7 +64,7 @@ def find_H_mdots(N_tube, N_baffle, is_square = False):
         mdot_shell_old = mdot_shell
         mdot_tube_old = mdot_tube
 
-        V_tube = mdot_tube / (rho * A_tube * N_tube)
+        V_tube = mdot_tube / (rho * A_tube_inner * N_tube)
         Re_tube = rho * V_tube * d_i / mu
         V_noz_tube = mdot_tube / (rho * A_noz)
         f = (1.82 * np.log10(Re_tube) - 1.64) ** (-2)
@@ -92,8 +93,10 @@ def find_H_mdots(N_tube, N_baffle, is_square = False):
     H = 1 / ((1/h_i) + (A_i*np.log(d_o/d_i))/(2*np.pi*k_tube*L_tube) + ((1/h_o)*(A_i/A_o)))
     return H, mdot_shell, mdot_tube
 
-def find_Q(N_tube, N_b, use_entu = False):
-    H, mdot_shell, mdot_tube  = find_H_mdots(N_tube, N_b)
+def find_Q(N_tube, N_b, L_tube = 0.35, baffle_spacing = None, use_entu = False):
+    if baffle_spacing is None:
+        baffle_spacing = L_tube / (N_b + 1)
+    H, mdot_shell, mdot_tube  = find_H_mdots(N_tube, N_b, L_tube, baffle_spacing)
     C_min = cp * min(mdot_shell, mdot_tube)
     C_max = cp * max(mdot_shell, mdot_tube)
     R_c = C_min / C_max
@@ -165,7 +168,61 @@ def benchmark():
     print(f'ENTU: {timeit.timeit("find_Q(N_tubes, N_baffles, use_entu=True)",  globals=locals(), setup="from __main__ import find_Q", number=num_iters) * 1e3 / num_iters} ms')
     print(f'LMTD: {timeit.timeit("find_Q(N_tubes, N_baffles, use_entu=False)", globals=locals(), setup="from __main__ import find_Q", number=num_iters) * 1e3 / num_iters} ms')
 
+def brute_force():
+    max_q = 0
+    max_n_tubes = 0
+    max_n_baffles = 0
+    for N_tubes in np.arange(3, 30):
+        for N_baffles in np.arange(2, 30):
+            L_tube, baffle_spacing = calculate_tube_length_baffle_spacing(1, 1, N_tubes, N_baffles)
+            q = find_Q(N_tubes, N_baffles, L_tube, baffle_spacing, use_entu=True)
+            if q > max_q:
+                max_q = q
+                max_n_baffles = N_baffles
+                max_n_tubes = N_tubes
+    print(f"max_q = {max_q}, max_n_baffles = {max_n_baffles}, max_n_tubes = {max_n_tubes}")
+
+def compare():
+    N_tubes = 29
+    N_baffles = 29
+    q = find_Q(N_tubes, N_baffles, use_entu=True)
+    N_tubes = 29
+    N_baffles = 10
+    q = find_Q(N_tubes, N_baffles, use_entu=True)
+
+def plot_graphs():
+    max_n_tubes = 10
+    max_n_baffles = 9
+    n_tubes_array = np.arange(max_n_tubes - 4, max_n_tubes + 4)
+    n_baffles_array = np.arange(max_n_baffles - 4, max_n_baffles + 4)
+
+    qs = np.zeros(np.shape(n_tubes_array))
+    ls = np.zeros(np.shape(n_tubes_array))
+
+    for i,n_tubes in enumerate(n_tubes_array):
+        L_tube, baffle_spacing = calculate_tube_length_baffle_spacing(1, 1, n_tubes, max_n_baffles)
+        qs[i] = find_Q(n_tubes, max_n_baffles, L_tube, baffle_spacing, use_entu=True)
+        ls[i] = L_tube
+    
+    plt.plot(n_tubes_array, qs)
+    plt.show()
+    plt.plot(n_tubes_array, ls)
+    plt.show()
+
+    qs = np.zeros(np.shape(n_baffles_array))
+
+    for i,n_baffles in enumerate(n_baffles_array):
+        L_tube, baffle_spacing = calculate_tube_length_baffle_spacing(1, 1, max_n_tubes, n_baffles)
+        qs[i] = find_Q(max_n_tubes, n_baffles, L_tube, baffle_spacing, use_entu=True)
+    
+    plt.plot(n_baffles_array, qs, label="Varying baffles")
+    plt.show()
+
+
+
 if __name__ == "__main__":
     # one_config()
-    benchmark()
-    
+    # benchmark()
+    # brute_force()
+    # compare()
+    plot_graphs()
