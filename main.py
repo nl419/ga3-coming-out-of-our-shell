@@ -52,9 +52,9 @@ def find_H_mdots(geom: HXGeometry, is_square = False):
     A_noz  = (np.pi / 4) * d_noz**2             # Area of inlet / outlet nozzles
     sigma = (geom.N_tube * A_tube_outer) / A_shell 
     baffle_spacing = geom.L_tube / (geom.N_baffle + 1)                 # Shell baffle factor
-    A_shell_flow = d_sh * baffle_spacing * np.sqrt(sigma)   # Flow area of shell taking into account baffles, etc
-    d_sh_characteristic = d_sh * (A_shell_flow / A_shell)
-    # d_sh_characteristic = d_sh * (1 - sigma)
+    A_shell_flow = d_sh * baffle_spacing * sigma   # Flow area of shell taking into account baffles, etc
+    # d_sh_characteristic = d_sh * (A_shell_flow / A_shell)
+    d_sh_characteristic = d_sh * (1 - sigma)
     A_i = np.pi*d_i*geom.L_tube 
     A_o = np.pi*d_o*geom.L_tube
 
@@ -249,7 +249,7 @@ def two_configs():
 if __name__ == "__main__":
     # one_config()
     # benchmark()
-    # brute_force_11()
+    brute_force_11()
     # brute_force_12()
     # plot_graphs()
-    two_configs()
+    # two_configs()
