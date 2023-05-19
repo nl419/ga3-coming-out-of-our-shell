@@ -85,7 +85,16 @@ def calculate_tube_length_baffle_spacing(num_shell_passes, num_tube_passes, num_
         tube_length = L_unseparated + (mass_remainder - mass_unseparated) / (rho_shell_tubes + rho_shell_separator)
         tube_length = min(tube_length, tube_length_limit)
         baffle_length = tube_length - L_unseparated - L_shell_header
-    baffle_spacing = baffle_length / (num_baffles - 1)
+    baffle_spacing = baffle_length / (num_baffles - 1) # Note: breaks if num_baffles = 1. So don't do that.
     return tube_length, baffle_spacing
 
 # TODO test that this gives reasonable results
+
+if __name__ == "__main__":
+    num_tube_passes = 1
+    num_shell_passes = 1
+    num_tubes = 2
+    num_baffles = 4
+    tube_length, baffle_spacing = calculate_tube_length_baffle_spacing(num_shell_passes, \
+                                                                       num_tube_passes, num_tubes, num_baffles)
+    print(tube_length, baffle_spacing)
