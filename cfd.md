@@ -20,3 +20,18 @@
 
 ## Scrappy notes
 - `triSurf().writeFms("C:/Users/Nik/Documents/OpenFOAM-sims/GA3/out.fms")`
+
+## TODO
+- [x] Set up meshing scripts
+  - Note: solid mesh and inner tube mesh are always the same
+  - So only need to regenerate the outer mesh
+- [x] Set up boundary conditions (can be copy-pasted to all cases)
+- [ ] Set up all the regions
+  - Create folders for all the different region BCs / fvSchemes etc
+  - Use toposet to set the region in each submesh ahead of time
+  - Then mergeMeshes
+  - Then splitMesh, I think...
+- [ ] Set up velocity incrementing script
+- [ ] Set up script to monitor the average pressure and bulk temperature at both outlets
+- [ ] At the end of each run, write average pressure & temp to `.csv` file
+- [ ] Once all sims are done, concat all files together.
