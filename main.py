@@ -43,7 +43,7 @@ def flow_rate_tube(p):
     comp_p_rise_tube = [0.0538, 0.1192, 0.1727, 0.2270, 0.2814, 0.3366, 0.3907, 0.4456, 0.4791, 0.5115]
     return np.interp(p / 1e5, comp_p_rise_tube, comp_flow_rate_tube)
 
-def find_H_mdots(geom: HXGeometry, is_square = False):
+def find_H_mdots(geom: HXGeometry, is_square = False, fix_mdots = False, mdots = [0,0]):
     """Find overall heat transfer coefficient for a given number of tubes and number of baffles"""
     assert(geom.N_tube % geom.tube_passes == 0)
 
@@ -65,37 +65,50 @@ def find_H_mdots(geom: HXGeometry, is_square = False):
         a = 0.34
         c = 0.15
 
-    # Start with initial guesses for both `mdot`s, iterate to find the intersection with compressor characteristic.
-    mdot_tube = 0.5
-    mdot_shell = 0.5
-    mdot_tube_old = 0
-    mdot_shell_old = 0
-    tolerance = 1e-3
-    relaxation_factor = 0.2
+    if not fix_mdots:
+    
+        # Start with initial guesses for both `mdot`s, iterate to find the intersection with compressor characteristic.
+        mdot_tube = 0.5
+        mdot_shell = 0.5
+        mdot_tube_old = 0
+        mdot_shell_old = 0
+        tolerance = 1e-3
+        relaxation_factor = 0.2
 
-    while abs(mdot_tube - mdot_tube_old) > tolerance or abs(mdot_shell - mdot_shell_old) > tolerance:
-        mdot_shell_old = mdot_shell
-        mdot_tube_old = mdot_tube
+        while abs(mdot_tube - mdot_tube_old) > tolerance or abs(mdot_shell - mdot_shell_old) > tolerance:
+            mdot_shell_old = mdot_shell
+            mdot_tube_old = mdot_tube
+
+            V_tube = mdot_tube / (rho * A_tube_inner * geom.N_tube / geom.tube_passes)
+            Re_tube = rho * V_tube * d_i / mu
+            V_noz_tube = mdot_tube / (rho * A_noz)
+            f = (1.82 * np.log10(Re_tube) - 1.64) ** (-2)
+
+            del_p_ends_tube = 0.5 * rho * (V_tube**2) * K_c_plus_K_e(sigma, Re_tube) * geom.tube_passes
+            del_p_noz_tube = rho * V_noz_tube**2
+            del_p_friction_tube = 0.5 * rho * (V_tube**2) * (f * geom.L_tube * geom.tube_passes / d_i)
+            del_p_total_tube = del_p_ends_tube + del_p_noz_tube + del_p_friction_tube
+
+            V_sh = mdot_shell / (rho * A_shell_flow)
+            Re_sh = rho * V_sh * d_sh_characteristic / mu
+            del_p_friction_shell = 4 * a * Re_sh**(-0.15) * geom.N_tube * rho * V_sh**2
+            V_noz_shell = mdot_shell / (rho * A_noz)
+            del_p_noz_shell = rho * V_noz_shell**2
+            del_p_total_shell = del_p_friction_shell * geom.shell_passes + del_p_noz_shell
+
+            mdot_shell = flow_rate_shell(del_p_total_shell) * relaxation_factor + mdot_shell * (1 - relaxation_factor)
+            mdot_tube = flow_rate_tube(del_p_total_tube) * relaxation_factor + mdot_tube * (1 - relaxation_factor)
+
+    else:
+
+        mdot_tube = mdots[0]
+        mdot_shell = mdots[1]
 
         V_tube = mdot_tube / (rho * A_tube_inner * geom.N_tube / geom.tube_passes)
         Re_tube = rho * V_tube * d_i / mu
-        V_noz_tube = mdot_tube / (rho * A_noz)
-        f = (1.82 * np.log10(Re_tube) - 1.64) ** (-2)
-
-        del_p_ends_tube = 0.5 * rho * (V_tube**2) * K_c_plus_K_e(sigma, Re_tube) * geom.tube_passes
-        del_p_noz_tube = rho * V_noz_tube**2
-        del_p_friction_tube = 0.5 * rho * (V_tube**2) * (f * geom.L_tube * geom.tube_passes / d_i)
-        del_p_total_tube = del_p_ends_tube + del_p_noz_tube + del_p_friction_tube
 
         V_sh = mdot_shell / (rho * A_shell_flow)
         Re_sh = rho * V_sh * d_sh_characteristic / mu
-        del_p_friction_shell = 4 * a * Re_sh**(-0.15) * geom.N_tube * rho * V_sh**2
-        V_noz_shell = mdot_shell / (rho * A_noz)
-        del_p_noz_shell = rho * V_noz_shell**2
-        del_p_total_shell = del_p_friction_shell * geom.shell_passes + del_p_noz_shell
-
-        mdot_shell = flow_rate_shell(del_p_total_shell) * relaxation_factor + mdot_shell * (1 - relaxation_factor)
-        mdot_tube = flow_rate_tube(del_p_total_tube) * relaxation_factor + mdot_tube * (1 - relaxation_factor)
 
     Nu_i = 0.023 * Re_tube**0.8 * Pr**0.3
     Nu_o = c * Re_sh**0.6 * Pr**0.3
@@ -106,8 +119,8 @@ def find_H_mdots(geom: HXGeometry, is_square = False):
     H = 1 / ((1/h_i) + (A_i*np.log(d_o/d_i))/(2*np.pi*k_tube*geom.L_tube) + ((1/h_o)*(A_i/A_o)))
     return H, mdot_shell, mdot_tube
 
-def find_Q(geom: HXGeometry, use_entu = False):
-    H, mdot_shell, mdot_tube  = find_H_mdots(geom)
+def find_Q(geom: HXGeometry, use_entu = False, fix_mdots = False, mdots = [0,0]):
+    H, mdot_shell, mdot_tube  = find_H_mdots(geom, fix_mdots=fix_mdots, mdots=mdots)
     C_min = cp * min(mdot_shell, mdot_tube)
     C_max = cp * max(mdot_shell, mdot_tube)
     R_c = C_min / C_max
@@ -238,7 +251,7 @@ def brute_force_all():
                     # print(N_tubes, N_baffles)
                     L_tube, baffle_spacing = calculate_tube_length_baffle_spacing(shell_passes, tube_passes, N_tubes, N_baffles)
                     geom = HXGeometry(N_tubes, N_baffles, L_tube, baffle_spacing, tube_passes=tube_passes, shell_passes=shell_passes)
-                    q = find_Q(geom, use_entu=True)
+                    q = find_Q(geom, use_entu=False)
                     if q > max_q:
                         max_q = q
                         max_n_baffles = N_baffles
@@ -307,6 +320,16 @@ def one_config():
     geom = HXGeometry(n_tubes, n_baffles, L_tube, baffle_spacing, tube_passes=tube_passes, shell_passes=shell_passes)
     print(find_Q(geom, use_entu=True))
 
+def enforce_mass_flows():
+    tube_passes = 1
+    shell_passes = 1
+    n_tubes = 20
+    n_baffles = 6
+    # L_tube, baffle_spacing = calculate_tube_length_baffle_spacing(1, 1, n_tubes, n_baffles)
+    L_tube = 0.172
+    baffle_spacing = 0.020
+    geom = HXGeometry(n_tubes, n_baffles, L_tube, baffle_spacing, tube_passes=tube_passes, shell_passes=shell_passes)
+    print(find_Q(geom, use_entu=True, fix_mdots=True, mdots = [0.5, 0.499]))
 
 if __name__ == "__main__":
     # one_config()
@@ -317,4 +340,6 @@ if __name__ == "__main__":
     # brute_force_custom()
     # plot_graphs()
     # two_configs()
-    brute_force_all()
+    # brute_force_all()
+    enforce_mass_flows()
+    
