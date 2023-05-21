@@ -30,7 +30,7 @@
 - [x] Automatically change the boundary types for the coupled faces
   - See the tutorial case for deets
 - [ ] Iteratively fix all the mistakes you've made
-  - Stop it from asking for a transportProperties.
+  - Dear god, why is it always crashing.
 - [ ] Set up velocity incrementing script
 - [ ] Set up script to monitor the average pressure and bulk temperature at both outlets
 - [ ] At the end of each run, write average pressure & temp to `.csv` file
