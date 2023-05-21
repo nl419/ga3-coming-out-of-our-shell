@@ -71,7 +71,7 @@ def find_H_mdots(geom: HXGeometry, is_square = False):
     mdot_tube_old = 0
     mdot_shell_old = 0
     tolerance = 1e-3
-    relaxation_factor = 0.5
+    relaxation_factor = 0.3
 
     while abs(mdot_tube - mdot_tube_old) > tolerance and abs(mdot_shell - mdot_shell_old) > tolerance:
         mdot_shell_old = mdot_shell
@@ -211,23 +211,23 @@ def brute_force_custom():
     max_q = 0
     max_n_tubes = 0
     max_n_baffles = 0
-    shell_passes = 4
-    tube_passes = 4
+    shell_passes = 1
+    tube_passes = 6
     for N_tubes in np.arange(2, 14) * tube_passes:
         for N_baffles in np.arange(2, 15):
-            print(N_tubes, N_baffles)
-            L_tube, baffle_spacing = calculate_tube_length_baffle_spacing(1, 1, N_tubes, N_baffles)
+            L_tube, baffle_spacing = calculate_tube_length_baffle_spacing(shell_passes, tube_passes, N_tubes, N_baffles)
             geom = HXGeometry(N_tubes, N_baffles, L_tube, baffle_spacing, tube_passes=tube_passes, shell_passes=shell_passes)
             q = find_Q(geom, use_entu=True)
             if q > max_q:
                 max_q = q
                 max_n_baffles = N_baffles
                 max_n_tubes = N_tubes
+            print(N_tubes, N_baffles, q)
     print(f"max_q = {max_q}, max_n_baffles = {max_n_baffles}, max_n_tubes = {max_n_tubes}")
 
 def brute_force_all():
     for shell_passes in [1,2,3,4]:
-        for tube_passes in [1,2,4]:
+        for tube_passes in [1,2,4,6,8]:
             max_q = 0
             max_n_tubes = 0
             max_n_baffles = 0
@@ -236,7 +236,7 @@ def brute_force_all():
                     break
                 for N_baffles in np.arange(2, 15):
                     # print(N_tubes, N_baffles)
-                    L_tube, baffle_spacing = calculate_tube_length_baffle_spacing(1, 1, N_tubes, N_baffles)
+                    L_tube, baffle_spacing = calculate_tube_length_baffle_spacing(shell_passes, tube_passes, N_tubes, N_baffles)
                     geom = HXGeometry(N_tubes, N_baffles, L_tube, baffle_spacing, tube_passes=tube_passes, shell_passes=shell_passes)
                     q = find_Q(geom, use_entu=True)
                     if q > max_q:
@@ -309,7 +309,7 @@ def one_config():
 
 
 if __name__ == "__main__":
-    one_config()
+    # one_config()
     # benchmark()
     # brute_force_11()
     # brute_force_12()
@@ -317,4 +317,4 @@ if __name__ == "__main__":
     # brute_force_custom()
     # plot_graphs()
     # two_configs()
-    # brute_force_all()
+    brute_force_all()

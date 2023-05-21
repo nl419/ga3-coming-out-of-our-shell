@@ -14,8 +14,8 @@ tube_length_limit_even_tube_pass = 0.35 - 40e-3 - 20e-3 - 1.5e-3 * 4
 
 # Calculate mass of unchanging parts
 def _constant_mass(num_shell_passes, num_tube_passes, num_tubes, num_baffles):
-    assert(num_shell_passes == 1 or num_shell_passes == 2)
-    assert(num_tube_passes == 1 or num_tube_passes == 2 or num_tube_passes == 4)
+    # assert(num_shell_passes == 1 or num_shell_passes == 2)
+    # assert(num_tube_passes == 1 or num_tube_passes == 2 or num_tube_passes == 4)
     assert(num_tubes % num_tube_passes == 0)
 
     result = 0
