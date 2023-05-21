@@ -164,7 +164,7 @@ def brute_force_11():
     max_q = 0
     max_n_tubes = 0
     max_n_baffles = 0
-    for N_tubes in np.arange(3, 30):
+    for N_tubes in np.arange(3, 22):
         for N_baffles in np.arange(2, 30):
             L_tube, baffle_spacing = calculate_tube_length_baffle_spacing(1, 1, N_tubes, N_baffles)
             geom = HXGeometry(N_tubes, N_baffles, L_tube, baffle_spacing)
@@ -179,7 +179,7 @@ def brute_force_12():
     max_q = 0
     max_n_tubes = 0
     max_n_baffles = 0
-    for N_tubes in np.arange(2, 15) * 2:
+    for N_tubes in np.arange(2, 11) * 2:
         for N_baffles in np.arange(2, 10):
             # print(N_tubes, N_baffles)
             L_tube, baffle_spacing = calculate_tube_length_baffle_spacing(1, 1, N_tubes, N_baffles)
@@ -195,7 +195,7 @@ def brute_force_14():
     max_q = 0
     max_n_tubes = 0
     max_n_baffles = 0
-    for N_tubes in np.arange(2, 7) * 4:
+    for N_tubes in np.arange(2, 6) * 4:
         for N_baffles in np.arange(2, 10):
             # print(N_tubes, N_baffles)
             L_tube, baffle_spacing = calculate_tube_length_baffle_spacing(1, 1, N_tubes, N_baffles)
