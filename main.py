@@ -71,9 +71,9 @@ def find_H_mdots(geom: HXGeometry, is_square = False):
     mdot_tube_old = 0
     mdot_shell_old = 0
     tolerance = 1e-3
-    relaxation_factor = 0.3
+    relaxation_factor = 0.2
 
-    while abs(mdot_tube - mdot_tube_old) > tolerance and abs(mdot_shell - mdot_shell_old) > tolerance:
+    while abs(mdot_tube - mdot_tube_old) > tolerance or abs(mdot_shell - mdot_shell_old) > tolerance:
         mdot_shell_old = mdot_shell
         mdot_tube_old = mdot_tube
 
@@ -125,7 +125,7 @@ def find_Q(geom: HXGeometry, use_entu = False):
         # Typically 0.23 ms for ENTU and 0.3 ms for LMTD on my machine
         relaxation_factor = 1.0
 
-    while abs(T_shell_out - T_shell_out_old) > tolerance and abs(T_tube_out - T_tube_out_old) > tolerance:
+    while abs(T_shell_out - T_shell_out_old) > tolerance or abs(T_tube_out - T_tube_out_old) > tolerance:
         T_shell_out_old = T_shell_out
         T_tube_out_old = T_tube_out
 
