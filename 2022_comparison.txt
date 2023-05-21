@@ -12,3 +12,5 @@ D ""                                               6.08kW       5.58kW          
 C ""                                               5.92kW       5.07kW          -14%
 B ""                                               5.51kW       4.49kW          -19%
 A ""                                               5.32kW       4.62kW          -13%
+
+Mean (of absolute value)                                                       +-11%          

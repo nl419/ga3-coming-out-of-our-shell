@@ -115,8 +115,24 @@ def find_H_mdots(geom: HXGeometry, is_square = False, fix_mdots = False, mdots =
 
     if new_ho:
 
-        pass
+        if is_square:
+            
+            free_area = Y**2 - (np.pi/4) * d_o**2 # Free area looking along the axis of the tubes
+            wetted_perimeter = np.pi * d_o
 
+        else:
+
+            free_area = (3)**0.5 / 4 * Y**2 - (np.pi/8) * d_o**2
+            wetted_perimeter = 0.5 * np.pi * d_o
+
+        De = 4 * free_area / wetted_perimeter
+        A_shell_flow = d_sh * baffle_spacing * (Y - d_o) / (Y * 144)
+        #A_shell_flow = d_sh * baffle_spacing * (1 - sigma) / (geom.shell_passes)
+        Gs = mdot_shell / A_shell_flow
+        
+
+        h_o = 0.36 * (De * Gs / mu)**0.55 * (cp * mu / k_w)**(1/3) * k_w / De
+        
     else:
 
         Nu_o = c * Re_sh**0.6 * Pr**0.3
@@ -257,7 +273,7 @@ def brute_force_all():
                     # print(N_tubes, N_baffles)
                     L_tube, baffle_spacing = calculate_tube_length_baffle_spacing(shell_passes, tube_passes, N_tubes, N_baffles)
                     geom = HXGeometry(N_tubes, N_baffles, L_tube, baffle_spacing, tube_passes=tube_passes, shell_passes=shell_passes)
-                    q = find_Q(geom, use_entu=False)
+                    q = find_Q(geom, use_entu=False, new_ho = False)
                     if q > max_q:
                         max_q = q
                         max_n_baffles = N_baffles
@@ -333,9 +349,9 @@ def enforce_mass_flows():
     n_baffles = 6
     # L_tube, baffle_spacing = calculate_tube_length_baffle_spacing(1, 1, n_tubes, n_baffles)
     L_tube = 0.172
-    baffle_spacing = 0.020
+    baffle_spacing = 0.02
     geom = HXGeometry(n_tubes, n_baffles, L_tube, baffle_spacing, tube_passes=tube_passes, shell_passes=shell_passes)
-    print(find_Q(geom, use_entu=True, fix_mdots=True, mdots = [0.450*rho/1000, 0.344*rho/1000]))
+    print(find_Q(geom, use_entu=True, fix_mdots=True, mdots = [0.450*rho/1000, 0.344*rho/1000], new_ho=False))
     # mdots are [mdot_shell, mdot_tube]
 
 if __name__ == "__main__":
@@ -347,6 +363,6 @@ if __name__ == "__main__":
     # brute_force_custom()
     # plot_graphs()
     # two_configs()
-    # brute_force_all()
-    enforce_mass_flows()
+    brute_force_all()
+    # enforce_mass_flows()
     
