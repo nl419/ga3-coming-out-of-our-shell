@@ -1,0 +1,73 @@
+Group Designs:
+X: [Ns, Nt, N, Nb, dBaffle, square]
+A
+[1, 1, 14, 12, 81.102, 0] # 12/63.5 cut off for baffle. Two grids of triangles, lined up by square (so mostly triangle grid)
+L = 236mm, Y = 14mm, B_space = 12.4mm
+Tin1 = 19.4, Tin2 = 55.4 (Tout1 = 25.3, Tout2 = 50.0, Q = 10.38kW, e = 17.1%)
+Tin1 = 29.0, Tin2 = 47.5 (Tout1 = 31.8, Tout2 = 44.6, Q = 5.32kW, e = 16.3%)
+mdots = 0.408 0.483
+mdots = 0.425 0.476
+B
+[1, 1, 16, 6, 72.882, 0] # 17.22/63.5
+L = 219mm, Y = 10mm, B_space = 26mm
+Tin1 = 20.8, Tin2 = 53.8 (Tout1 = 24.9, Tout2 = 48.8, Q = 9.62kW, e = 14.5%)
+Tin1 = 28.5, Tin2 = 47.0 (Tout1 = 30.8, Tout2 = 44.2, Q = 5.51kW, e = 15.0%)
+mdots = 0.542 0.486
+mdots = 0.575 0.479
+C
+[1, 2, 20, 4, 81.496, 0] # 3 Issues: N pass 1 = 15, N pass 2 = 5. 2 Baffles are 13.75/63.5, 2 are 9.75/63.5. Top 15 tubes are triangle, bottom 5 are square.
+L = 174mm, Y = 10mm, B_space = 27mm (ish)
+Tin1 = 22.0, Tin2 = 51.5 (Tout1 = 26.3, Tout2 = 46.1, Q = 9.67kW, e = 18.2%)
+TIn1 = 28.1, Tin2 = 46.5 (Tout1 = 30.6, Tout2 = 43.0, Q = 5.92kW, e = 18.1%)
+mdots = 0.542 0.434
+mdots = 0.542 0.431
+D
+[1, 2, 12, 8, 75.811, 0] # 15.36/63.5, even split of 6-6 tube passes
+L = 259mm, Y = 12mm, B_space = 21.5mm
+Tin1 = 23.0, Tin2 = 51.0 (Tout1 = 27.0, Tout2 = 45.1, Q = 9.41kW, e = 19.8%)
+Tin1 = 27.3, Tin2 = 45.5 (Tout1 = 30.0, Tout2 = 41.7, Q = 6.08kW, e = 19.9%)
+mdots = 0.533 0.410
+mdots = 0.517 0.406
+E
+[1, 4, 24, 4, 77.423, 0] # Baffles aren't cut flat, cut an upper segment thing removed. Between 20.9mm and 13.9mm removed. Tubes aren't to a grid, closer to triangle
+L = 145mm, Y = 12.3mm, B_space = 18.16mm
+Tin1 = 24.1, Tin2 = 48.8 (Tout1 = 28.0, Tout2 = 43.9, Q = 8.26kW, e = 19.4%)
+Tin1 = 26.6, Tin2 = 46.3 (Tout1 = 29.4, Tout2 = 42.1, Q = 6.46kW, e = 19.3%)
+mdots = 0.500 0.417
+mdots = 0.500 0.410
+F
+[2, 4, 20, 6, 68.504, 0] # Nice 4 Nt, 2 Ns design. Grid is a little off from triangle, 20/63.5
+L = 172mm, Y = 10mm, B_space = 20mm
+Tin1 = 25.0, Tin2 = 48.1 (Tout1 = 28.9, Tout2 = 42.4, Q = 7.82kW, e = 23.8%)
+Tin1 = 26.1, Tin2 = 45.8 (Tout1 = 29.6, Tout2 = 41.0, Q = 6.67kW, e = 23.8%)
+mdots = 0.467 0.344
+mdots = 0.450 0.344
+
+Pump Characteristics
+COLD SIDE (2022)
+Flowrate, Pressure drop
+litres/s, bar
+0.5833   0.1113
+0.5083   0.2157
+0.4750   0.2538
+0.4250   0.3168
+0.3792   0.3613
+0.3417   0.4031
+0.2958   0.4511
+0.2583   0.4846
+0.2125   0.5181
+0.1708   0.5573
+
+HOT SIDE (2022)
+Flowrate, Pressure drop
+litres/s, bar
+0.4583   0.1333
+0.4236   0.1756
+0.4010   0.2024
+0.3611   0.2577
+0.3125   0.3171
+0.2639   0.3633
+0.2222   0.4233
+0.1597   0.4784
+0.1181   0.5330
+0.0694   0.5715

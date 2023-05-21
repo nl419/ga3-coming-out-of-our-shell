@@ -43,7 +43,7 @@ def flow_rate_tube(p):
     comp_p_rise_tube = [0.0538, 0.1192, 0.1727, 0.2270, 0.2814, 0.3366, 0.3907, 0.4456, 0.4791, 0.5115]
     return np.interp(p / 1e5, comp_p_rise_tube, comp_flow_rate_tube)
 
-def find_H_mdots(geom: HXGeometry, is_square = False, fix_mdots = False, mdots = [0,0]):
+def find_H_mdots(geom: HXGeometry, is_square = False, fix_mdots = False, mdots = [0,0], new_ho = False):
     """Find overall heat transfer coefficient for a given number of tubes and number of baffles"""
     assert(geom.N_tube % geom.tube_passes == 0)
 
@@ -101,8 +101,8 @@ def find_H_mdots(geom: HXGeometry, is_square = False, fix_mdots = False, mdots =
 
     else:
 
-        mdot_tube = mdots[0]
-        mdot_shell = mdots[1]
+        mdot_shell = mdots[0]
+        mdot_tube = mdots[1]
 
         V_tube = mdot_tube / (rho * A_tube_inner * geom.N_tube / geom.tube_passes)
         Re_tube = rho * V_tube * d_i / mu
@@ -111,16 +111,22 @@ def find_H_mdots(geom: HXGeometry, is_square = False, fix_mdots = False, mdots =
         Re_sh = rho * V_sh * d_sh_characteristic / mu
 
     Nu_i = 0.023 * Re_tube**0.8 * Pr**0.3
-    Nu_o = c * Re_sh**0.6 * Pr**0.3
-
     h_i = Nu_i * k_w / d_i
-    h_o = Nu_o * k_w / d_o
+
+    if new_ho:
+
+        pass
+
+    else:
+
+        Nu_o = c * Re_sh**0.6 * Pr**0.3
+        h_o = Nu_o * k_w / d_o
 
     H = 1 / ((1/h_i) + (A_i*np.log(d_o/d_i))/(2*np.pi*k_tube*geom.L_tube) + ((1/h_o)*(A_i/A_o)))
     return H, mdot_shell, mdot_tube
 
-def find_Q(geom: HXGeometry, use_entu = False, fix_mdots = False, mdots = [0,0]):
-    H, mdot_shell, mdot_tube  = find_H_mdots(geom, fix_mdots=fix_mdots, mdots=mdots)
+def find_Q(geom: HXGeometry, use_entu = False, fix_mdots = False, mdots = [0,0], new_ho = False):
+    H, mdot_shell, mdot_tube  = find_H_mdots(geom, fix_mdots=fix_mdots, mdots=mdots, new_ho=new_ho)
     C_min = cp * min(mdot_shell, mdot_tube)
     C_max = cp * max(mdot_shell, mdot_tube)
     R_c = C_min / C_max
@@ -321,15 +327,16 @@ def one_config():
     print(find_Q(geom, use_entu=True))
 
 def enforce_mass_flows():
-    tube_passes = 1
-    shell_passes = 1
+    tube_passes = 4
+    shell_passes = 2
     n_tubes = 20
     n_baffles = 6
     # L_tube, baffle_spacing = calculate_tube_length_baffle_spacing(1, 1, n_tubes, n_baffles)
     L_tube = 0.172
     baffle_spacing = 0.020
     geom = HXGeometry(n_tubes, n_baffles, L_tube, baffle_spacing, tube_passes=tube_passes, shell_passes=shell_passes)
-    print(find_Q(geom, use_entu=True, fix_mdots=True, mdots = [0.5, 0.499]))
+    print(find_Q(geom, use_entu=True, fix_mdots=True, mdots = [0.450*rho/1000, 0.344*rho/1000]))
+    # mdots are [mdot_shell, mdot_tube]
 
 if __name__ == "__main__":
     # one_config()
