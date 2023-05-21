@@ -20,7 +20,7 @@ cp = 4179
 k_w = 0.632
 T_shell_in = 20
 T_tube_in = 60  ### 2 == hot / tube, 1 == cold / shell
-Y = 0.014
+Y = 0.012
 
 @dataclass
 class HXGeometry:
@@ -343,15 +343,15 @@ def one_config():
     print(find_Q(geom, use_entu=True))
 
 def enforce_mass_flows():
-    tube_passes = 4
-    shell_passes = 2
-    n_tubes = 20
-    n_baffles = 6
+    tube_passes = 2
+    shell_passes = 1
+    n_tubes = 18
+    n_baffles = 8
     # L_tube, baffle_spacing = calculate_tube_length_baffle_spacing(1, 1, n_tubes, n_baffles)
-    L_tube = 0.172
-    baffle_spacing = 0.02
+    L_tube = 0.212
+    baffle_spacing = 0.01675
     geom = HXGeometry(n_tubes, n_baffles, L_tube, baffle_spacing, tube_passes=tube_passes, shell_passes=shell_passes)
-    print(find_Q(geom, use_entu=True, fix_mdots=True, mdots = [0.450*rho/1000, 0.344*rho/1000], new_ho=False))
+    print(find_Q(geom, use_entu=True, fix_mdots=True, mdots = [0.608*rho/1000, 0.483*rho/1000], new_ho=False))
     # mdots are [mdot_shell, mdot_tube]
 
 if __name__ == "__main__":

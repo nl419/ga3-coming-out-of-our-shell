@@ -1,0 +1,10 @@
+              Design                            Actual Q     Predicted Q      % Error
+
+A (4 tube pass, 2 shell pass, 16 t, 12 b)         15.82kW      14.82kW          -6%
+B (2 tube pass, 2 shell pass, 14 t, 11 b)         11.22kW      12.24kW          +9%
+C (2 tube pass, 1 shell pass, 16 t, 6 b)          11.77kW      10.99kW          -6%
+D (4 tube pass, 2 shell pass, 20 t, 6 b)          13.71kW      14.30kW          +4%
+E (2 tube pass, 1 shell pass, 24 t, 4 b)          14.87kW      12.56kW         -16%
+
+Mean (of absolute value)                                                       +-8%         
+Mean                                                                            -3%  
