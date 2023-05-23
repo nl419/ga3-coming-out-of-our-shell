@@ -283,7 +283,7 @@ def brute_force_all():
 def plot_graphs():
     tube_passes = 2
     max_n_tubes = 12
-    max_n_baffles = 2
+    max_n_baffles = 6
     n_tubes_array = max_n_tubes + np.arange(-3, 10) * tube_passes
     n_baffles_array = np.arange(max_n_baffles - 4, max_n_baffles + 4)
 
@@ -299,10 +299,16 @@ def plot_graphs():
         areas[i] = L_tube * n_tubes
     
     plt.plot(n_tubes_array, qs)
+    plt.xlabel('number of tubes')
+    plt.ylabel('Heat Transfer Q / W')
     plt.show()
     plt.plot(n_tubes_array, ls)
+    plt.xlabel('number of tubes')
+    plt.ylabel('Overall length / m')
     plt.show()
     plt.plot(n_tubes_array, areas)
+    plt.xlabel('number of tubes')
+    plt.ylabel('Surface area available for heat transfer / m2')
     plt.show()
 
     qs = np.zeros(np.shape(n_baffles_array))
@@ -315,8 +321,12 @@ def plot_graphs():
         ls[i] = L_tube
     
     plt.plot(n_baffles_array, qs, label="Varying baffles")
+    plt.xlabel('number of baffles')
+    plt.ylabel('Heat transfer Q / W')
     plt.show()
     plt.plot(n_baffles_array, ls)
+    plt.xlabel('number of baffles')
+    plt.ylabel('Overall length / m')
     plt.show()
 
 def two_configs():
@@ -355,6 +365,7 @@ def enforce_mass_flows():
     # mdots are [mdot_shell, mdot_tube]
 
 if __name__ == "__main__":
+    plot_graphs()
     # one_config()
     # benchmark()
     # brute_force_11()
@@ -363,6 +374,6 @@ if __name__ == "__main__":
     # brute_force_custom()
     # plot_graphs()
     # two_configs()
-    brute_force_all()
+    # brute_force_all()
     # enforce_mass_flows()
     
