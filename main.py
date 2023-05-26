@@ -426,7 +426,7 @@ def enforce_mass_flows():
     # mdots are [mdot_shell, mdot_tube]
 
 
-def dp_shell_error(result_year: tuple, fac1: float, fac2: float, fac3: float, fac4: float):
+def dp_shell_error(result_year: tuple, fac1: float, fac2: float, fac3: float, fac4: float, fac5: float):
     result: PastResults = result_year[0]
     geom = result.geom
     year = result_year[1]
@@ -455,8 +455,10 @@ def dp_shell_error(result_year: tuple, fac1: float, fac2: float, fac3: float, fa
         del_p_noz_shell = rho * V_noz_shell**2
         # del_p_total_shell = del_p_friction_shell * fac1 * (geom.shell_passes ** fac2) + (del_p_noz_shell * fac4) + geom.N_baffle * fac3 * V_sh**2
         # del_p_total_shell = del_p_friction_shell * fac1 * (L_sh_eff ** fac2) + del_p_noz_shell
-        del_p_total_shell = del_p_friction_shell * fac1 + del_p_noz_shell + V_sh**2 * geom.shell_passes * fac2 * 100
+        #del_p_total_shell = del_p_friction_shell * fac1 + del_p_noz_shell + V_sh**2 * geom.shell_passes * fac2 * 100
 
+        del_p_total_shell = rho*V_sh**2*fac1 + geom.N_baffle*geom.shell_passes*V_sh**2*rho*fac2 + (geom.shell_passes-1)*rho*V_sh**2*fac3 + Re_sh**(-0.15)*geom.N_tube*rho*V_sh**2*fac5*geom.N_baffle
+        
         mdot_shell_comp = flow_rate_shell(del_p_total_shell, year) * 1000 / rho
 
         mdot_shell = mdot_shell_comp * relaxation_factor + mdot_shell * (1 - relaxation_factor)
@@ -469,10 +471,10 @@ def optimise_dp_coeffs():
             result_years.append((result, key))
 
     def total_dp_shell_error(args):
-        fac1, fac2, fac3, fac4 = args
+        fac1, fac2, fac3, fac4, fac5 = args
         total = 0
         for result_year in result_years:
-            err = dp_shell_error(result_year, fac1, fac2, fac3, fac4) / 1e5
+            err = dp_shell_error(result_year, fac1, fac2, fac3, fac4, fac5)
             total += err * err
         total = np.sqrt(total)
         print(args)
@@ -482,7 +484,7 @@ def optimise_dp_coeffs():
     
     # print(total_dp_shell_error([1,1,1,1]))
 
-    res = minimize(total_dp_shell_error, [30.83873568,  1.02156337 / 100,  1.        ,  1.        ])
+    res = minimize(total_dp_shell_error, [1, 1, 1, 0.15, 0.8])
     print(res) # [1.45574161e-05, 1.23121351e+00, 5.64149288e+00, 9.92159081e+00]
 
 def plot_dp_shell():
@@ -498,13 +500,13 @@ def plot_dp_shell():
     print(result_years)
 
     # args = [1.45574161e-05, 1.23121351e+00, 5.64149288e+00, 9.92159081e+00]
-    args = [  39.59863799, -160.22039221,    1.        ,    1.        ]
-    fac1, fac2, fac3, fac4 = args
+    args = [ 1.94779271e+02,  7.39740878e+00, -1.41953981e+02,  1.50000000e-01, -4.62675568e+00]
+    fac1, fac2, fac3, fac4, fac5 = args
 
     errs = []
 
     for result_year in result_years:
-        err = dp_shell_error(result_year, fac1, fac2, fac3, fac4)
+        err = dp_shell_error(result_year, fac1, fac2, fac3, fac4, fac5)
         errs.append(err / result_year[0].dp_cold)
 
     plt.plot(errs, "o")
@@ -522,5 +524,5 @@ if __name__ == "__main__":
     # two_configs()
     # brute_force_all()
     # enforce_mass_flows()
-    # optimise_dp_coeffs()
+    optimise_dp_coeffs()
     plot_dp_shell()
