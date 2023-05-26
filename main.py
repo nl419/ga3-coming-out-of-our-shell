@@ -31,19 +31,62 @@ class HXGeometry:
     shell_passes: int = 1
     tube_passes: int = 1
 
-def flow_rate_shell(p):
+@dataclass
+class PastResults:
+    geom: HXGeometry
+    dp_cold: float
+    dp_hot: float
+    q: float
+
+all_past_results = {
+    2022: [
+        PastResults(HXGeometry(14, 12, 0.224, 11.45e-3, 1, 1), 0.305e5, 0.122e5, 11.53e3),
+        PastResults(HXGeometry(16,  6, 0.210, 50.00e-3, 1, 1), 0.160e5, 0.118e5, 11.66e3),
+        PastResults(HXGeometry(20,  4, 0.162, 34.00e-3, 1, 2), 0.179e5, 0.190e5, 13.11e3),
+        PastResults(HXGeometry(12,  8, 0.256, 19.50e-3, 1, 2), 0.187e5, 0.221e5, 13.45e3),
+        # PastResults(HXGeometry(24,  4, 0.256, 19.50e-3, 1, 2), 0.187e5, 0.221e5, 13.45e3),
+
+    ]
+}
+
+def flow_rate_shell(p, year):
     """Find the flow rate for a given pressure drop for the shell side compressor. p in Pa"""
-    comp_flow_rate_shell = [0.7083, 0.6417, 0.5750, 0.5080, 0.4250, 0.3583, 0.3083, 0.2417, 0.1917, 0.1583]
-    comp_p_rise_shell = [0.1310, 0.2017, 0.2750, 0.3417, 0.4038, 0.4503, 0.4856, 0.5352, 0.5717, 0.5876]
+    all_flow_rates_p_rise_shell = {
+        2023: (
+            (0.7083, 0.6417, 0.5750, 0.5080, 0.4250, 0.3583, 0.3083, 0.2417, 0.1917, 0.1583),
+            (0.1310, 0.2017, 0.2750, 0.3417, 0.4038, 0.4503, 0.4856, 0.5352, 0.5717, 0.5876)),
+        2022: (
+            (0.5833, 0.5083, 0.4750, 0.4250, 0.3792, 0.3417, 0.2958, 0.2583, 0.2125, 0.1708),
+            (0.1113, 0.2157, 0.2538, 0.3168, 0.3613, 0.4031, 0.4511, 0.4846, 0.5181, 0.5573)),
+        2019: (
+            (0.6917, 0.6750, 0.6292, 0.5917, 0.5458, 0.5083, 0.4625, 0.4250, 0.3792, 0.3417, 0.2958, 0.2542, 0.2125, 0.1708)
+            (0.1475, 0.1619, 0.2178, 0.2607, 0.3041, 0.3417, 0.3756, 0.4118, 0.4423, 0.4711, 0.5031, 0.5297, 0.5561, 0.5823))
+    }
+
+    comp_flow_rate_shell, comp_p_rise_shell = all_flow_rates_p_rise_shell[year]
+
     return np.interp(p / 1e5, comp_p_rise_shell, comp_flow_rate_shell)
 
-def flow_rate_tube(p):
+def flow_rate_tube(p, year):
     """Find the flow rate for a given pressure drop for the tube side compressor. p in Pa"""
-    comp_flow_rate_tube = [0.4722, 0.4340, 0.3924, 0.3507, 0.3021, 0.2535, 0.1979, 0.1493, 0.1111, 0.0694]
-    comp_p_rise_tube = [0.0538, 0.1192, 0.1727, 0.2270, 0.2814, 0.3366, 0.3907, 0.4456, 0.4791, 0.5115]
+    all_flow_rates_p_rise_shell = {
+        2023: (
+            (0.4722, 0.4340, 0.3924, 0.3507, 0.3021, 0.2535, 0.1979, 0.1493, 0.1111, 0.0694),
+            (0.0538, 0.1192, 0.1727, 0.2270, 0.2814, 0.3366, 0.3907, 0.4456, 0.4791, 0.5115)),
+        2022: (
+            (0.4583, 0.4236, 0.4010, 0.3611, 0.3125, 0.2639, 0.2222, 0.1597, 0.1181, 0.0694),
+            (0.1333, 0.1756, 0.2024, 0.2577, 0.3171, 0.3633, 0.4233, 0.4784, 0.5330, 0.5715)),
+        2019: (
+            (0.5382, 0.5278, 0.4931, 0.4549, 0.4201, 0.3854, 0.3507, 0.3160, 0.2813, 0.2465, 0.2118, 0.1771, 0.1424, 0.1076, 0.0694),
+            (0.1101, 0.1315, 0.1800, 0.2185, 0.2537, 0.2999, 0.3440, 0.3780, 0.4149, 0.4547, 0.5005, 0.5271, 0.5677, 0.5971, 0.6045))
+    }
+
+    comp_flow_rate_tube, comp_p_rise_tube = all_flow_rates_p_rise_shell[year]
+
     return np.interp(p / 1e5, comp_p_rise_tube, comp_flow_rate_tube)
 
-def find_H_mdots(geom: HXGeometry, is_square = False, fix_mdots = False, mdots = [0,0], new_ho = False):
+def find_H_mdots(geom: HXGeometry, is_square = False, fix_mdots = False, mdots = [0,0], new_ho = False,
+                 fric_fac = 1.0, sp_fac = 1.0, b_fac = 1.0, noz_fac = 1.0, year = 2023):
     """Find overall heat transfer coefficient for a given number of tubes and number of baffles"""
     assert(geom.N_tube % geom.tube_passes == 0)
 
@@ -66,14 +109,13 @@ def find_H_mdots(geom: HXGeometry, is_square = False, fix_mdots = False, mdots =
         c = 0.15
 
     if not fix_mdots:
-    
         # Start with initial guesses for both `mdot`s, iterate to find the intersection with compressor characteristic.
         mdot_tube = 0.5
         mdot_shell = 0.5
         mdot_tube_old = 0
         mdot_shell_old = 0
         tolerance = 1e-3
-        relaxation_factor = 0.2
+        relaxation_factor = 0.1
 
         while abs(mdot_tube - mdot_tube_old) > tolerance or abs(mdot_shell - mdot_shell_old) > tolerance:
             mdot_shell_old = mdot_shell
@@ -94,10 +136,10 @@ def find_H_mdots(geom: HXGeometry, is_square = False, fix_mdots = False, mdots =
             del_p_friction_shell = 4 * a * Re_sh**(-0.15) * geom.N_tube * rho * V_sh**2
             V_noz_shell = mdot_shell / (rho * A_noz)
             del_p_noz_shell = rho * V_noz_shell**2
-            del_p_total_shell = del_p_friction_shell * geom.shell_passes + del_p_noz_shell
+            del_p_total_shell = del_p_friction_shell * fric_fac * (geom.shell_passes ** sp_fac) * (geom.N_baffle ** b_fac) + (del_p_noz_shell * noz_fac)
 
-            mdot_shell = flow_rate_shell(del_p_total_shell) * relaxation_factor + mdot_shell * (1 - relaxation_factor)
-            mdot_tube = flow_rate_tube(del_p_total_tube) * relaxation_factor + mdot_tube * (1 - relaxation_factor)
+            mdot_shell = flow_rate_shell(del_p_total_shell, year) * relaxation_factor / rho + mdot_shell * (1 - relaxation_factor)
+            mdot_tube = flow_rate_tube(del_p_total_tube, year) * relaxation_factor / rho + mdot_tube * (1 - relaxation_factor)
 
     else:
 
@@ -267,7 +309,7 @@ def brute_force_all():
             max_n_tubes = 0
             max_n_baffles = 0
             for N_tubes in np.arange(2, 14) * tube_passes:
-                if N_tubes > 20:
+                if N_tubes > 16:
                     break
                 for N_baffles in np.arange(2, 15):
                     # print(N_tubes, N_baffles)
@@ -344,11 +386,11 @@ def two_configs():
 def one_config():
     tube_passes = 4
     shell_passes = 2
-    n_tubes = 20
-    n_baffles = 6
+    n_tubes = 12
+    n_baffles = 11
     # L_tube, baffle_spacing = calculate_tube_length_baffle_spacing(1, 1, n_tubes, n_baffles)
-    L_tube = 0.172
-    baffle_spacing = 0.020
+    L_tube = 0.2474
+    baffle_spacing = 0.01674
     geom = HXGeometry(n_tubes, n_baffles, L_tube, baffle_spacing, tube_passes=tube_passes, shell_passes=shell_passes)
     print(find_Q(geom, use_entu=True))
 
@@ -365,7 +407,7 @@ def enforce_mass_flows():
     # mdots are [mdot_shell, mdot_tube]
 
 if __name__ == "__main__":
-    plot_graphs()
+    # plot_graphs()
     # one_config()
     # benchmark()
     # brute_force_11()
@@ -374,6 +416,6 @@ if __name__ == "__main__":
     # brute_force_custom()
     # plot_graphs()
     # two_configs()
-    # brute_force_all()
+    brute_force_all()
     # enforce_mass_flows()
     
