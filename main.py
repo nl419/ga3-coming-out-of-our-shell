@@ -4,6 +4,7 @@ from entry_exit_coeffs import K_c_plus_K_e
 from mass_estimate import calculate_tube_length_baffle_spacing
 from dataclasses import dataclass
 from correction_factor import correction_factor
+from scipy.optimize import minimize
 
 # Geometry configuration
 d_i = 0.006
@@ -58,7 +59,7 @@ all_past_results = {
         PastResults(HXGeometry(16, 6, 0.213, 25.0e-3, 1, 2), 0.275e5, 0.212e5, 14.23e3),
         PastResults(HXGeometry(20, 6, 0.184, 22.5e-3, 1, 2), 0.362e5, 0.348e5, 16.27e3),
         PastResults(HXGeometry(18, 8, 0.203, 16.75e-3, 1, 2), 0.325e5, 0.200e5, 17.24e3),
-        ]
+    ]
 }
 
 def flow_rate_shell(p, year):
@@ -104,7 +105,7 @@ def flow_rate_tube(p, year):
     return np.interp(p / 1e5, comp_p_rise_tube, comp_flow_rate_tube)
 
 def find_H_mdots(geom: HXGeometry, is_square = False, fix_mdots = False, mdots = [0,0], new_ho = False,
-                 fric_fac = 1.0, sp_fac = 1.0, b_fac = 1.0, noz_fac = 1.0, year = 2023):
+                 fac1 = 1.0, fac2 = 1.0, fac3 = 1.0, fac4 = 1.0, year = 2023):
     """Find overall heat transfer coefficient for a given number of tubes and number of baffles"""
     assert(geom.N_tube % geom.tube_passes == 0)
 
@@ -154,10 +155,10 @@ def find_H_mdots(geom: HXGeometry, is_square = False, fix_mdots = False, mdots =
             del_p_friction_shell = 4 * a * Re_sh**(-0.15) * geom.N_tube * rho * V_sh**2
             V_noz_shell = mdot_shell / (rho * A_noz)
             del_p_noz_shell = rho * V_noz_shell**2
-            del_p_total_shell = del_p_friction_shell * fric_fac * (geom.shell_passes ** sp_fac) * (geom.N_baffle ** b_fac) + (del_p_noz_shell * noz_fac)
+            del_p_total_shell = del_p_friction_shell * fac1 * (geom.shell_passes ** fac2) * (geom.N_baffle ** fac3) + (del_p_noz_shell * fac4)
 
-            mdot_shell = flow_rate_shell(del_p_total_shell, year) * relaxation_factor / rho + mdot_shell * (1 - relaxation_factor)
-            mdot_tube = flow_rate_tube(del_p_total_tube, year) * relaxation_factor / rho + mdot_tube * (1 - relaxation_factor)
+            mdot_shell = flow_rate_shell(del_p_total_shell, year) * relaxation_factor * 1000 / rho + mdot_shell * (1 - relaxation_factor)
+            mdot_tube = flow_rate_tube(del_p_total_tube, year) * relaxation_factor * 1000 / rho + mdot_tube * (1 - relaxation_factor)
 
     else:
 
@@ -424,6 +425,91 @@ def enforce_mass_flows():
     print(find_Q(geom, use_entu=True, fix_mdots=True, mdots = [0.608*rho/1000, 0.483*rho/1000], new_ho=False))
     # mdots are [mdot_shell, mdot_tube]
 
+
+def dp_shell_error(result_year: tuple, fac1: float, fac2: float, fac3: float, fac4: float):
+    result: PastResults = result_year[0]
+    geom = result.geom
+    year = result_year[1]
+    A_tube_outer = (np.pi / 4) * d_o**2               # Area of a single tube
+    A_shell = (np.pi / 4) * d_sh**2             # Area of the shell (ignoring baffles, tubes, etc)
+    A_noz  = (np.pi / 4) * d_noz**2             # Area of inlet / outlet nozzles
+    sigma = (geom.N_tube * A_tube_outer) / A_shell 
+    baffle_spacing = geom.L_tube / (geom.N_baffle + 1)                 # Shell baffle factor
+    A_shell_flow = d_sh * baffle_spacing * (1 - sigma) / geom.shell_passes   # Flow area of shell taking into account baffles, etc
+    d_sh_characteristic = d_sh * (1 - sigma)
+
+    L_sh_eff = (geom.L_tube + d_sh * geom.N_baffle) * geom.shell_passes
+
+    a = 0.2
+    # Start with initial guesses for both `mdot`s, iterate to find the intersection with compressor characteristic.
+    mdot_shell = 0.5
+    mdot_shell_comp = 0
+    tolerance = 1e-4
+    relaxation_factor = 0.1
+
+    while abs(mdot_shell - mdot_shell_comp) > tolerance:
+        V_sh = mdot_shell / (rho * A_shell_flow)
+        Re_sh = rho * V_sh * d_sh_characteristic / mu
+        del_p_friction_shell = 4 * a * Re_sh**(-0.15) * geom.N_tube * rho * V_sh**2
+        V_noz_shell = mdot_shell / (rho * A_noz)
+        del_p_noz_shell = rho * V_noz_shell**2
+        # del_p_total_shell = del_p_friction_shell * fac1 * (geom.shell_passes ** fac2) + (del_p_noz_shell * fac4) + geom.N_baffle * fac3 * V_sh**2
+        # del_p_total_shell = del_p_friction_shell * fac1 * (L_sh_eff ** fac2) + del_p_noz_shell
+        del_p_total_shell = del_p_friction_shell * fac1 + del_p_noz_shell + V_sh**2 * geom.shell_passes * fac2 * 100
+
+        mdot_shell_comp = flow_rate_shell(del_p_total_shell, year) * 1000 / rho
+
+        mdot_shell = mdot_shell_comp * relaxation_factor + mdot_shell * (1 - relaxation_factor)
+    return del_p_total_shell - result.dp_cold
+
+def optimise_dp_coeffs():
+    result_years = []
+    for key,result_list in all_past_results.items():
+        for result in result_list:
+            result_years.append((result, key))
+
+    def total_dp_shell_error(args):
+        fac1, fac2, fac3, fac4 = args
+        total = 0
+        for result_year in result_years:
+            err = dp_shell_error(result_year, fac1, fac2, fac3, fac4) / 1e5
+            total += err * err
+        total = np.sqrt(total)
+        print(args)
+        print(total)
+        # print()
+        return total
+    
+    # print(total_dp_shell_error([1,1,1,1]))
+
+    res = minimize(total_dp_shell_error, [30.83873568,  1.02156337 / 100,  1.        ,  1.        ])
+    print(res) # [1.45574161e-05, 1.23121351e+00, 5.64149288e+00, 9.92159081e+00]
+
+def plot_dp_shell():
+    # Get array of past dps
+    # Get array of current dps
+    # Plot as i,y-x
+
+    result_years = []
+    for key,result_list in all_past_results.items():
+        for result in result_list:
+            result_years.append((result, key))
+
+    print(result_years)
+
+    # args = [1.45574161e-05, 1.23121351e+00, 5.64149288e+00, 9.92159081e+00]
+    args = [  39.59863799, -160.22039221,    1.        ,    1.        ]
+    fac1, fac2, fac3, fac4 = args
+
+    errs = []
+
+    for result_year in result_years:
+        err = dp_shell_error(result_year, fac1, fac2, fac3, fac4)
+        errs.append(err / result_year[0].dp_cold)
+
+    plt.plot(errs, "o")
+    plt.show() 
+
 if __name__ == "__main__":
     # plot_graphs()
     # one_config()
@@ -434,6 +520,7 @@ if __name__ == "__main__":
     # brute_force_custom()
     # plot_graphs()
     # two_configs()
-    brute_force_all()
+    # brute_force_all()
     # enforce_mass_flows()
-    
+    # optimise_dp_coeffs()
+    plot_dp_shell()
