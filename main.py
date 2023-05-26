@@ -47,6 +47,13 @@ all_past_results = {
         # PastResults(HXGeometry(24,  4, 0.256, 19.50e-3, 1, 2), 0.187e5, 0.221e5, 13.45e3),
 
     ]
+    2019: [
+        PastResults(HXGeometry(16, 6, 0.2127, 12.8e-3, 2, 4), 0.437e5, 0.391e5, 12.78e3),
+        PastResults(HXGeometry(14, 11, 0.237, 14.5e-3, 2, 2), 0.458e5, 0.219e5, 12.82e3),
+        PastResults(HXGeometry(16, 6, 0.213, 25.0e-3, 1, 2), 0.275e5, 0.212e5, 14.23e3),
+        PastResults(HXGeometry(20, 6, 0.184, 22.5e-3, 1, 2), 0.362e5, 0.348e5, 16.27e3),
+        PastResults(HXGeometry(18, 8, 0.203, 16.75e-3, 1, 2), 0.325e5, 0.200e5, 17.24e3),
+        ]
 }
 
 def flow_rate_shell(p, year):
