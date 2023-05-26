@@ -51,7 +51,7 @@ all_past_results = {
         PastResults(HXGeometry(20,  7, 0.132, 23.80e-3, 2, 4), 0.202e5, 0.292e5, 10.52e3),
         PastResults(HXGeometry(24,  7, 0.121, 22.00e-3, 2, 4), 0.241e5, 0.179e5, 11.74e3),
         PastResults(HXGeometry(16,  5, 0.121, 43.80e-3, 2, 2), 0.244e5, 0.179e5, 11.50e3),
-    ]
+    ],
     2019: [
         PastResults(HXGeometry(16, 6, 0.2127, 12.8e-3, 2, 4), 0.437e5, 0.391e5, 12.78e3),
         PastResults(HXGeometry(14, 11, 0.237, 14.5e-3, 2, 2), 0.458e5, 0.219e5, 12.82e3),
