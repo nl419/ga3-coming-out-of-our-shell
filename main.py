@@ -202,7 +202,7 @@ def find_H_mdots(geom: HXGeometry, is_square = False, fix_mdots = False, mdots =
     H = 1 / ((1/h_i) + (A_i*np.log(d_o/d_i))/(2*np.pi*k_tube*geom.L_tube) + ((1/h_o)*(A_i/A_o)))
     return H, mdot_shell, mdot_tube
 
-def find_Q(geom: HXGeometry, use_entu = False, fix_mdots = False, mdots = [0,0], new_ho = False):
+def find_Q(geom: HXGeometry, use_entu = False, fix_mdots = False, mdots = [0,0], new_ho = False, output=False):
     H, mdot_shell, mdot_tube  = find_H_mdots(geom, fix_mdots=fix_mdots, mdots=mdots, new_ho=new_ho)
     C_min = cp * min(mdot_shell, mdot_tube)
     C_max = cp * max(mdot_shell, mdot_tube)
@@ -242,7 +242,14 @@ def find_Q(geom: HXGeometry, use_entu = False, fix_mdots = False, mdots = [0,0],
 
         T_shell_out = (T_shell_in + Q / C_shell) * relaxation_factor + T_shell_out * (1 - relaxation_factor)
         T_tube_out = (T_tube_in - Q / C_tube) * relaxation_factor + T_tube_out * (1 - relaxation_factor)
-    
+
+    if output:
+        print("Mdot Shell:    " + str(round(mdot_shell,5)) + " kg/s")
+        print("Mdot Tube:     " + str(round(mdot_tube,5)) + " kg/s")
+        print("Effectiveness: " + str(round(100*effectiveness,4)) + " %")
+        print("Tout Shell:    " + str(round(T_shell_out,4)) + " °C")
+        print("Tout Tube:     " + str(round(T_tube_out,4)) + " °C")
+        print("Q:             " + str(round(Q,1)) + " W")
     return Q
 
 def benchmark():
@@ -403,15 +410,15 @@ def two_configs():
     find_Q(geom, use_entu=True)
 
 def one_config():
-    tube_passes = 4
-    shell_passes = 2
-    n_tubes = 18
+    tube_passes = 2
+    shell_passes = 1
+    n_tubes = 14
     n_baffles = 10
     # L_tube, baffle_spacing = calculate_tube_length_baffle_spacing(1, 1, n_tubes, n_baffles)
     L_tube = 0.25
     baffle_spacing = 0.02
     geom = HXGeometry(n_tubes, n_baffles, L_tube, baffle_spacing, tube_passes=tube_passes, shell_passes=shell_passes)
-    print(find_Q(geom, use_entu=True))
+    find_Q(geom, use_entu=True, output=True)
 
 def enforce_mass_flows():
     tube_passes = 2
@@ -514,7 +521,7 @@ def plot_dp_shell():
 
 if __name__ == "__main__":
     # plot_graphs()
-    # one_config()
+    one_config()
     # benchmark()
     # brute_force_11()
     # brute_force_12()
@@ -522,7 +529,7 @@ if __name__ == "__main__":
     # brute_force_custom()
     # plot_graphs()
     # two_configs()
-    brute_force_all()
+    # brute_force_all()
     # enforce_mass_flows()
     # optimise_dp_coeffs()
     # plot_dp_shell()
