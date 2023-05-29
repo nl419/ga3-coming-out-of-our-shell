@@ -327,8 +327,8 @@ def brute_force_all():
             max_q = 0
             max_n_tubes = 0
             max_n_baffles = 0
-            for N_tubes in np.arange(2, 14) * tube_passes:
-                if N_tubes > 16:
+            for N_tubes in np.arange(1, 20):
+                if N_tubes > 18:
                     break
                 for N_baffles in np.arange(2, 15):
                     # print(N_tubes, N_baffles)
@@ -514,7 +514,7 @@ def plot_dp_shell():
 
 if __name__ == "__main__":
     # plot_graphs()
-    one_config()
+    # one_config()
     # benchmark()
     # brute_force_11()
     # brute_force_12()
@@ -522,7 +522,7 @@ if __name__ == "__main__":
     # brute_force_custom()
     # plot_graphs()
     # two_configs()
-    # brute_force_all()
+    brute_force_all()
     # enforce_mass_flows()
     # optimise_dp_coeffs()
     # plot_dp_shell()
