@@ -2,7 +2,7 @@ import numpy as np
 from matplotlib import pyplot as plt
 from entry_exit_coeffs import K_c_plus_K_e
 from mass_estimate import calculate_tube_length_baffle_spacing
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from correction_factor import correction_factor
 from scipy.optimize import minimize
 
@@ -201,8 +201,11 @@ def find_H_mdots(geom: HXGeometry, is_square = False, fix_mdots = False, mdots =
     H = 1 / ((1/h_i) + (A_i*np.log(d_o/d_i))/(2*np.pi*k_tube*geom.L_tube) + ((1/h_o)*(A_i/A_o)))
     return H, mdot_shell, mdot_tube
 
-def find_Q(geom: HXGeometry, use_entu = True, fix_mdots = False, mdots = [0,0], new_ho = False, output=False):
+def find_Q(geom: HXGeometry, use_entu = True, fix_mdots = False, mdots = [0,0], new_ho = False, output=False,
+           H_override = None):
     H, mdot_shell, mdot_tube  = find_H_mdots(geom, fix_mdots=fix_mdots, mdots=mdots, new_ho=new_ho)
+    if H_override is not None:
+        H = H_override
     C_min = cp * min(mdot_shell, mdot_tube)
     C_max = cp * max(mdot_shell, mdot_tube)
     R_c = C_min / C_max
@@ -535,6 +538,99 @@ def compare_against_year():
         print(f"{100 * (mdot_shell - mdot_shell_exp) / mdot_shell_exp:.2f}, {100 * (mdot_tube - mdot_shell_exp) / mdot_tube_exp:.2f}, ", end="")
         print(f"{100 * (q - q_exp) / q_exp:.2f}, {100 * (q_fixed - q_exp) / q_exp:.2f}")
 
+
+def plot_variation_graphs():
+    # Vary mdots
+    # L_tube, baffle_spacing = calculate_tube_length_baffle_spacing(num_shell_passes=2, num_tube_passes=4, num_tubes=18, num_baffles=4)
+    L_tube = 0.144
+    baffle_spacing = 0.0263
+    geom = HXGeometry(N_tube=18, N_baffle=4, L_tube=L_tube, baffle_spacing=baffle_spacing, shell_passes=2, tube_passes=4)
+    
+    H0, mdot_shell0, mdot_tube0 = find_H_mdots(geom)
+    q0 = find_Q(geom)
+
+    # Error in mdot_shell
+    error_frac = np.linspace(0.8, 1.2, 10)
+    q_errors = np.zeros_like(error_frac)
+    for i,_ in enumerate(q_errors):
+        q_errors[i] = find_Q(geom, fix_mdots=True, mdots=[error_frac[i] * mdot_shell0, mdot_tube0]) / q0
+    
+    plt.xlabel("Error in cold side mass flow rate (%)")
+    plt.ylabel("Change in heat flux (%)")
+    plt.xlim(-20, 20)
+    plt.ylim(-20, 20)
+    plt.plot((error_frac - 1) * 100, (q_errors - 1) * 100)
+    plt.show()
+
+    # Error in mdot_tube
+    for i,_ in enumerate(q_errors):
+        q_errors[i] = find_Q(geom, fix_mdots=True, mdots=[mdot_shell0, error_frac[i] * mdot_tube0]) / q0
+    
+    plt.xlabel("Error in hot side mass flow rate (%)")
+    plt.ylabel("Change in heat flux (%)")
+    plt.xlim(-20, 20)
+    plt.ylim(-20, 20)
+    plt.plot((error_frac - 1) * 100, (q_errors - 1) * 100)
+    plt.show()
+
+    # Error in H
+    for i,_ in enumerate(q_errors):
+        q_errors[i] = find_Q(geom, fix_mdots=True, mdots=[mdot_shell0, mdot_tube0], H_override=error_frac[i] * H0) / q0
+    
+    plt.xlabel("Error in overall heat transfer coeff (%)")
+    plt.ylabel("Change in heat flux (%)")
+    plt.xlim(-20, 20)
+    plt.ylim(-20, 20)
+    plt.plot((error_frac - 1) * 100, (q_errors - 1) * 100)
+    plt.show()
+
+    # Q vs tube length
+    for i,_ in enumerate(q_errors):
+        g = replace(geom)
+        g.L_tube = L_tube * error_frac[i]
+        g.baffle_spacing = baffle_spacing * error_frac[i]
+        q_errors[i] = find_Q(g) / q0
+    
+    plt.xlabel("Length (mm)")
+    plt.ylabel("Change in heat flux (%)")
+    plt.ylim(-20, 20)
+    plt.plot(error_frac * 1000 * L_tube, (q_errors - 1) * 100)
+    plt.show()
+
+    # Q vs num tubes
+    num_tubes_array = np.arange(14, 20)
+    q_errors = np.zeros(np.shape(num_tubes_array))
+    for i,N_tube in enumerate(num_tubes_array):
+        g = replace(geom)
+        g.N_tube = N_tube
+        L_tube, baffle_spacing = calculate_tube_length_baffle_spacing(g.shell_passes, g.tube_passes, g.N_tube, g.N_baffle)
+        g.L_tube = L_tube
+        g.baffle_spacing = baffle_spacing
+        q_errors[i] = find_Q(g) / q0
+
+    plt.xlabel("Number of tubes (-)")
+    plt.ylabel("Change in heat flux (%)")
+    plt.ylim(-20, 20)
+    plt.plot(num_tubes_array, (q_errors - 1) * 100)
+    plt.show()
+
+    # Q vs num baffles
+    num_baffles_array = np.arange(2, 12)
+    q_errors = np.zeros(np.shape(num_baffles_array))
+    for i,N_baffle in enumerate(num_baffles_array):
+        g = replace(geom)
+        g.N_baffle = N_baffle
+        L_tube, baffle_spacing = calculate_tube_length_baffle_spacing(g.shell_passes, g.tube_passes, g.N_tube, g.N_baffle)
+        g.L_tube = L_tube
+        g.baffle_spacing = baffle_spacing
+        q_errors[i] = find_Q(g) / q0
+
+    plt.xlabel("Number of baffles (-)")
+    plt.ylabel("Change in heat flux (%)")
+    plt.ylim(-20, 20)
+    plt.plot(num_baffles_array, (q_errors - 1) * 100)
+    plt.show()
+
 if __name__ == "__main__":
     # plot_graphs()
     # one_config()
@@ -545,8 +641,9 @@ if __name__ == "__main__":
     # brute_force_custom()
     # plot_graphs()
     # two_configs()
-    brute_force_all()
+    # brute_force_all()
     # enforce_mass_flows()
     # optimise_dp_coeffs()
     # plot_dp_shell()
     # compare_against_year()
+    plot_variation_graphs()
