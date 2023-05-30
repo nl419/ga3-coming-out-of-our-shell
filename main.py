@@ -104,8 +104,7 @@ def flow_rate_tube(p, year):
 
     return np.interp(p / 1e5, comp_p_rise_tube, comp_flow_rate_tube)
 
-def find_H_mdots(geom: HXGeometry, is_square = False, fix_mdots = False, mdots = [0,0], new_ho = False,
-                 fac1 = 1.0, fac2 = 1.0, fac3 = 1.0, fac4 = 1.0, year = 2023):
+def find_H_mdots(geom: HXGeometry, is_square = False, fix_mdots = False, mdots = [0,0], new_ho = False, year = 2023):
     """Find overall heat transfer coefficient for a given number of tubes and number of baffles"""
     #assert(geom.N_tube % geom.tube_passes == 0)
 
@@ -202,7 +201,7 @@ def find_H_mdots(geom: HXGeometry, is_square = False, fix_mdots = False, mdots =
     H = 1 / ((1/h_i) + (A_i*np.log(d_o/d_i))/(2*np.pi*k_tube*geom.L_tube) + ((1/h_o)*(A_i/A_o)))
     return H, mdot_shell, mdot_tube
 
-def find_Q(geom: HXGeometry, use_entu = False, fix_mdots = False, mdots = [0,0], new_ho = False, output=False):
+def find_Q(geom: HXGeometry, use_entu = True, fix_mdots = False, mdots = [0,0], new_ho = False, output=False):
     H, mdot_shell, mdot_tube  = find_H_mdots(geom, fix_mdots=fix_mdots, mdots=mdots, new_ho=new_ho)
     C_min = cp * min(mdot_shell, mdot_tube)
     C_max = cp * max(mdot_shell, mdot_tube)
@@ -314,10 +313,12 @@ def brute_force_custom():
     max_q = 0
     max_n_tubes = 0
     max_n_baffles = 0
-    shell_passes = 1
-    tube_passes = 6
-    for N_tubes in np.arange(2, 14) * tube_passes:
-        for N_baffles in np.arange(2, 15):
+    shell_passes = 2
+    tube_passes = 4
+    for N_tubes in np.arange(15, 20):
+        if N_tubes > 18:
+            break
+        for N_baffles in np.arange(2, 6):
             L_tube, baffle_spacing = calculate_tube_length_baffle_spacing(shell_passes, tube_passes, N_tubes, N_baffles)
             geom = HXGeometry(N_tubes, N_baffles, L_tube, baffle_spacing, tube_passes=tube_passes, shell_passes=shell_passes)
             q = find_Q(geom, use_entu=True)
@@ -341,7 +342,7 @@ def brute_force_all():
                     # print(N_tubes, N_baffles)
                     L_tube, baffle_spacing = calculate_tube_length_baffle_spacing(shell_passes, tube_passes, N_tubes, N_baffles)
                     geom = HXGeometry(N_tubes, N_baffles, L_tube, baffle_spacing, tube_passes=tube_passes, shell_passes=shell_passes)
-                    q = find_Q(geom, use_entu=False, new_ho = False)
+                    q = find_Q(geom, use_entu=True)
                     if q > max_q:
                         max_q = q
                         max_n_baffles = N_baffles
@@ -410,13 +411,15 @@ def two_configs():
     find_Q(geom, use_entu=True)
 
 def one_config():
-    tube_passes = 2
-    shell_passes = 1
-    n_tubes = 14
-    n_baffles = 10
-    # L_tube, baffle_spacing = calculate_tube_length_baffle_spacing(1, 1, n_tubes, n_baffles)
-    L_tube = 0.25
-    baffle_spacing = 0.02
+    tube_passes = 4
+    shell_passes = 2
+    n_tubes = 18
+    n_baffles = 4
+    # L_tube, baffle_spacing = calculate_tube_length_baffle_spacing(shell_passes, tube_passes, n_tubes, n_baffles)
+    # print(L_tube)
+    # print(baffle_spacing)
+    L_tube = 0.16
+    baffle_spacing = 0.0263
     geom = HXGeometry(n_tubes, n_baffles, L_tube, baffle_spacing, tube_passes=tube_passes, shell_passes=shell_passes)
     find_Q(geom, use_entu=True, output=True)
 
@@ -519,17 +522,31 @@ def plot_dp_shell():
     plt.plot(errs, "o")
     plt.show() 
 
+def compare_against_year():
+    year = 2022
+    print("mdot_shell error %, mdot_tube error %, q error % (with our mdots), q error % (with experiment mdots)")
+    for res in all_past_results[year]:
+        q = find_Q(res.geom, output=False)
+        _, mdot_shell, mdot_tube = find_H_mdots(res.geom, year=year)
+        mdot_shell_exp = flow_rate_shell(res.dp_cold, year)
+        mdot_tube_exp = flow_rate_shell(res.dp_hot, year)
+        q_exp = res.q
+        q_fixed = find_Q(res.geom, fix_mdots=True, mdots=[mdot_shell_exp, mdot_tube_exp])
+        print(f"{100 * (mdot_shell - mdot_shell_exp) / mdot_shell_exp:.2f}, {100 * (mdot_tube - mdot_shell_exp) / mdot_tube_exp:.2f}, ", end="")
+        print(f"{100 * (q - q_exp) / q_exp:.2f}, {100 * (q_fixed - q_exp) / q_exp:.2f}")
+
 if __name__ == "__main__":
     # plot_graphs()
-    one_config()
+    # one_config()
     # benchmark()
     # brute_force_11()
     # brute_force_12()
     # brute_force_14()
-    # brute_force_custom()
+    brute_force_custom()
     # plot_graphs()
     # two_configs()
     # brute_force_all()
     # enforce_mass_flows()
     # optimise_dp_coeffs()
     # plot_dp_shell()
+    # compare_against_year()
