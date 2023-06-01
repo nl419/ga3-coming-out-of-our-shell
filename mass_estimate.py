@@ -9,7 +9,7 @@ rho_3D_printed = 1150   # kg / m3
 m_big_o_ring = 5.3e-3   # kg
 m_small_o_ring = 0.8e-3 # kg   
 
-mass_limit = 1.00
+mass_limit = 1.05
 tube_length_limit_one_tube_pass = 0.35 - 40e-3 * 2 - 8e-3 * 2 + 5.5e-3 * 2
 tube_length_limit_even_tube_pass = 0.35 - 40e-3 - 20e-3 - 8e-3 * 2 + 5.5e-3 * 2
 

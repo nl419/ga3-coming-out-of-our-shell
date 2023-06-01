@@ -202,8 +202,8 @@ def find_H_mdots(geom: HXGeometry, is_square = False, fix_mdots = False, mdots =
     return H, mdot_shell, mdot_tube
 
 def find_Q(geom: HXGeometry, use_entu = True, fix_mdots = False, mdots = [0,0], new_ho = False, output=False,
-           H_override = None):
-    H, mdot_shell, mdot_tube  = find_H_mdots(geom, fix_mdots=fix_mdots, mdots=mdots, new_ho=new_ho)
+           H_override = None, year = 2023):
+    H, mdot_shell, mdot_tube  = find_H_mdots(geom, fix_mdots=fix_mdots, mdots=mdots, new_ho=new_ho, year=year)
     if H_override is not None:
         H = H_override
     C_min = cp * min(mdot_shell, mdot_tube)
@@ -350,7 +350,8 @@ def brute_force_all():
                         max_q = q
                         max_n_baffles = N_baffles
                         max_n_tubes = N_tubes
-            print(f"shell_passes = {shell_passes}, tube_passes = {tube_passes}, max_q = {max_q}, max_n_baffles = {max_n_baffles}, max_n_tubes = {max_n_tubes}")
+            # print(f"shell_passes = {shell_passes}, tube_passes = {tube_passes}, max_q = {max_q}, max_n_baffles = {max_n_baffles}, max_n_tubes = {max_n_tubes}")
+            print(f"{shell_passes}, {tube_passes}, {max_q:.0f}, {max_n_baffles}, {max_n_tubes}")
 
 def plot_graphs():
     tube_passes = 2
@@ -529,7 +530,7 @@ def compare_against_year():
     year = 2022
     print("mdot_shell error %, mdot_tube error %, q error % (with our mdots), q error % (with experiment mdots)")
     for res in all_past_results[year]:
-        q = find_Q(res.geom, output=False)
+        q = find_Q(res.geom, output=False, year=year)
         _, mdot_shell, mdot_tube = find_H_mdots(res.geom, year=year)
         mdot_shell_exp = flow_rate_shell(res.dp_cold, year)
         mdot_tube_exp = flow_rate_shell(res.dp_hot, year)
@@ -645,5 +646,5 @@ if __name__ == "__main__":
     # enforce_mass_flows()
     # optimise_dp_coeffs()
     # plot_dp_shell()
-    # compare_against_year()
-    plot_variation_graphs()
+    compare_against_year()
+    # plot_variation_graphs()
